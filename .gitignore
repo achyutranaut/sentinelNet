@@ -1,2 +1,60 @@
+# macOS
 .DS_Store
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# ML / experiment outputs
+models/*.pt
+models/*.pth
+models/*.h5
+models/*.keras
+models/*.joblib
+models/*.pkl
+
+# Datasets
+data/raw/
+data/processed/
+
+# Logs
+*.log
+logs/
+
+# IDEs
+.vscode/
+.idea/
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# OS/editor temp files
+*.swp
+*.swo
+*~
