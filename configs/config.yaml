@@ -1,0 +1,128 @@
+# SentinelNet Production MLOps Configuration
+
+system:
+  project_name: "SentinelNet"
+  version: "1.0.0"
+  random_seed: 42
+  data_dir: "data"
+  artifacts_dir: "artifacts"
+  registry_dir: "artifacts/registry"
+  models_dir: "artifacts/models"
+
+data:
+  num_baseline_samples: 12000
+  num_known_attack_samples: 5000
+  num_zero_day_samples: 1500
+  num_lateral_movement_samples: 1200
+  test_size: 0.25
+  val_size: 0.10
+
+features:
+  flow_features:
+    - "flow_duration_ms"
+    - "total_fwd_packets"
+    - "total_bwd_packets"
+    - "total_fwd_bytes"
+    - "total_bwd_bytes"
+    - "fwd_packet_length_mean"
+    - "fwd_packet_length_std"
+    - "bwd_packet_length_mean"
+    - "bwd_packet_length_std"
+    - "flow_bytes_per_sec"
+    - "flow_packets_per_sec"
+    - "flow_iat_mean_ms"
+    - "flow_iat_std_ms"
+    - "flow_iat_max_ms"
+    - "flow_iat_min_ms"
+    - "fwd_iat_mean_ms"
+    - "bwd_iat_mean_ms"
+    - "fwd_syn_flags"
+    - "fwd_rst_flags"
+    - "fwd_psh_flags"
+    - "fwd_ack_flags"
+    - "bwd_syn_flags"
+    - "bwd_rst_flags"
+    - "bwd_psh_flags"
+    - "bwd_ack_flags"
+    - "header_length_ratio"
+    - "packet_size_variance"
+    - "down_up_ratio"
+    - "avg_fwd_segment_size"
+    - "avg_bwd_segment_size"
+
+  log_transform_cols:
+    - "flow_duration_ms"
+    - "total_fwd_packets"
+    - "total_bwd_packets"
+    - "total_fwd_bytes"
+    - "total_bwd_bytes"
+    - "flow_bytes_per_sec"
+    - "flow_packets_per_sec"
+    - "flow_iat_mean_ms"
+    - "flow_iat_std_ms"
+    - "flow_iat_max_ms"
+    - "fwd_iat_mean_ms"
+    - "bwd_iat_mean_ms"
+    - "packet_size_variance"
+
+  metadata_cols:
+    - "timestamp"
+    - "src_ip"
+    - "dst_ip"
+    - "dst_port"
+    - "attack_type"
+    - "label"
+
+validation:
+  port_range: [1, 65535]
+  max_flow_duration_ms: 86400000.0  # 24 hours
+  max_packets: 10000000
+  max_bytes: 10000000000.0
+
+models:
+  supervised_lightgbm:
+    n_estimators: 150
+    learning_rate: 0.05
+    max_depth: 6
+    num_leaves: 31
+    class_weight: "balanced"
+    eval_metric: "binary_logloss"
+    early_stopping_rounds: 15
+
+  anomaly_autoencoder:
+    input_dim: 30
+    latent_dim: 4
+    hidden_dims: [20, 10]
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    epochs: 25
+    batch_size: 64
+    reconstruction_threshold_percentile: 98.5
+
+graph:
+  window_size_seconds: 300
+  degree_zscore_threshold: 2.5
+  jaccard_novelty_threshold: 0.85
+  pagerank_delta_threshold: 0.15
+
+adversarial:
+  epsilon_levels: [0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4]
+  padding_max_ratio: 0.5
+  jitter_max_ms: 250.0
+
+soc_costs:
+  cost_false_negative: 50000.0  # Cost of an unflagged enterprise breach ($)
+  cost_false_positive: 50.0     # Cost of 15 min analyst triage ($)
+  cost_true_positive: 0.0
+  cost_true_negative: 0.0
+
+monitoring:
+  ks_pvalue_threshold: 0.05
+  psi_warning_threshold: 0.10
+  psi_critical_threshold: 0.25
+  drift_window_size: 1000
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  latency_sla_ms: 1.5

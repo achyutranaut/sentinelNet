@@ -1,0 +1,157 @@
+{
+  "models": {
+    "sentinelnet_1.0.0_20260917_212515": {
+      "model_id": "sentinelnet_1.0.0_20260917_212515",
+      "version": "1.0.0",
+      "created_at": "2026-09-17T21:25:15.515197+00:00",
+      "dataset_hash": "2bb4e4ba0d924c7b",
+      "status": "archived",
+      "hyperparameters": {
+        "supervised": {
+          "n_estimators": 150,
+          "learning_rate": 0.05,
+          "max_depth": 6,
+          "num_leaves": 31,
+          "class_weight": "balanced",
+          "eval_metric": "binary_logloss",
+          "early_stopping_rounds": 15
+        },
+        "autoencoder": {
+          "input_dim": 30,
+          "latent_dim": 4,
+          "hidden_dims": [
+            20,
+            10
+          ],
+          "learning_rate": 0.001,
+          "weight_decay": 0.0001,
+          "epochs": 25,
+          "batch_size": 64,
+          "reconstruction_threshold_percentile": 98.5
+        }
+      },
+      "metrics": {
+        "precision": 0.9707317073170731,
+        "recall": 0.35535714285714287,
+        "f1": 0.5202614379084968,
+        "pr_auc": 0.8684628663853518,
+        "roc_auc": 0.8514125,
+        "ae_threshold": 0.7798611521720886,
+        "optimal_threshold": 0.1386868686868687,
+        "cost_reduction_percent": 99.78,
+        "adversarial_recall_eps_02": 0.7267857142857143
+      },
+      "feature_names": [
+        "flow_duration_ms",
+        "total_fwd_packets",
+        "total_bwd_packets",
+        "total_fwd_bytes",
+        "total_bwd_bytes",
+        "fwd_packet_length_mean",
+        "fwd_packet_length_std",
+        "bwd_packet_length_mean",
+        "bwd_packet_length_std",
+        "flow_bytes_per_sec",
+        "flow_packets_per_sec",
+        "flow_iat_mean_ms",
+        "flow_iat_std_ms",
+        "flow_iat_max_ms",
+        "flow_iat_min_ms",
+        "fwd_iat_mean_ms",
+        "bwd_iat_mean_ms",
+        "fwd_syn_flags",
+        "fwd_rst_flags",
+        "fwd_psh_flags",
+        "fwd_ack_flags",
+        "bwd_syn_flags",
+        "bwd_rst_flags",
+        "bwd_psh_flags",
+        "bwd_ack_flags",
+        "header_length_ratio",
+        "packet_size_variance",
+        "down_up_ratio",
+        "avg_fwd_segment_size",
+        "avg_bwd_segment_size"
+      ],
+      "description": "Automated CT Pipeline Release",
+      "artifact_path": "artifacts/models/sentinelnet_1.0.0_20260917_212515.bundle"
+    },
+    "sentinelnet_1.0.0_20260917_213640": {
+      "model_id": "sentinelnet_1.0.0_20260917_213640",
+      "version": "1.0.0",
+      "created_at": "2026-09-17T21:36:40.716098+00:00",
+      "dataset_hash": "239c6ba4f46c2934",
+      "status": "production",
+      "hyperparameters": {
+        "supervised": {
+          "n_estimators": 150,
+          "learning_rate": 0.05,
+          "max_depth": 6,
+          "num_leaves": 31,
+          "class_weight": "balanced",
+          "eval_metric": "binary_logloss",
+          "early_stopping_rounds": 15
+        },
+        "autoencoder": {
+          "input_dim": 30,
+          "latent_dim": 4,
+          "hidden_dims": [
+            20,
+            10
+          ],
+          "learning_rate": 0.001,
+          "weight_decay": 0.0001,
+          "epochs": 25,
+          "batch_size": 64,
+          "reconstruction_threshold_percentile": 98.5
+        }
+      },
+      "metrics": {
+        "precision": 1.0,
+        "recall": 0.3659824046920821,
+        "f1": 0.5358522971232289,
+        "pr_auc": 0.703784766842034,
+        "roc_auc": 0.6808985337243402,
+        "ae_threshold": 0.3126031160354614,
+        "optimal_threshold": 0.23767676767676768,
+        "cost_reduction_percent": 99.77796296296296,
+        "adversarial_recall_eps_02": 0.663049853372434
+      },
+      "feature_names": [
+        "flow_duration_ms",
+        "total_fwd_packets",
+        "total_bwd_packets",
+        "total_fwd_bytes",
+        "total_bwd_bytes",
+        "fwd_packet_length_mean",
+        "fwd_packet_length_std",
+        "bwd_packet_length_mean",
+        "bwd_packet_length_std",
+        "flow_bytes_per_sec",
+        "flow_packets_per_sec",
+        "flow_iat_mean_ms",
+        "flow_iat_std_ms",
+        "flow_iat_max_ms",
+        "flow_iat_min_ms",
+        "fwd_iat_mean_ms",
+        "bwd_iat_mean_ms",
+        "fwd_syn_flags",
+        "fwd_rst_flags",
+        "fwd_psh_flags",
+        "fwd_ack_flags",
+        "bwd_syn_flags",
+        "bwd_rst_flags",
+        "bwd_psh_flags",
+        "bwd_ack_flags",
+        "header_length_ratio",
+        "packet_size_variance",
+        "down_up_ratio",
+        "avg_fwd_segment_size",
+        "avg_bwd_segment_size"
+      ],
+      "description": "Automated CT Pipeline Release",
+      "artifact_path": "artifacts/models/sentinelnet_1.0.0_20260917_213640.bundle"
+    }
+  },
+  "active_production_id": "sentinelnet_1.0.0_20260917_213640"
+}

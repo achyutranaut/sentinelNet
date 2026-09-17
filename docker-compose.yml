@@ -1,0 +1,27 @@
+services:
+  scoring-api:
+    build: .
+    container_name: sentinelnet-api
+    ports:
+      - "8000:8000"
+    command: uvicorn src.api.app:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  soc-dashboard:
+    build: .
+    container_name: sentinelnet-dashboard
+    ports:
+      - "8501:8501"
+    command: streamlit run src/dashboard/app.py --server.port=8501 --server.address=0.0.0.0
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./data:/app/data
+    depends_on:
+      - scoring-api
