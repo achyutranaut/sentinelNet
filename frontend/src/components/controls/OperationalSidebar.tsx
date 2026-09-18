@@ -169,7 +169,7 @@ export const OperationalSidebar: React.FC<OperationalSidebarProps> = ({
           className="w-full bg-[#161b22] hover:bg-[#21262d] active:bg-[#30363d] text-[#e6edf3] border border-[#30363d] rounded-[2px] py-2 px-3 font-heading font-bold text-[10.5px] uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-colors disabled:opacity-50"
         >
           <Send className={`w-3.5 h-3.5 text-[#3FB950] ${isInjecting ? 'animate-spin' : ''}`} />
-          <span>{isInjecting ? 'SCORING VIA /SCORE...' : 'INGEST &amp; SCORE FLOW BATCH'}</span>
+          <span>{isInjecting ? 'SCORING VIA /SCORE...' : 'INGEST & SCORE FLOW BATCH'}</span>
         </button>
 
         {lastBatchTime !== null && (

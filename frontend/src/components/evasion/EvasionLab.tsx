@@ -140,7 +140,7 @@ export const EvasionLab: React.FC<EvasionLabProps> = ({
       <div className="bg-[#161b22] border-b border-[#21262d] px-2.5 py-1.5 flex justify-between items-center font-heading text-[10px] font-bold tracking-wider uppercase text-[#8b949e] select-none">
         <div className="flex items-center gap-2">
           <span className="text-[#e6edf3]">COMPONENT 04 //</span>
-          <span>ADVERSARIAL EVASION &amp; STRESS-TEST LAB</span>
+          <span>ADVERSARIAL EVASION & STRESS-TEST LAB</span>
           <span className="text-[#30363d]">|</span>
           <span className="text-[#8b949e]">TIER 4 (RESILIENCE)</span>
         </div>

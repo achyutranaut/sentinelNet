@@ -6,17 +6,18 @@ import { HelpCircle } from 'lucide-react';
 interface TreeShapInspectorProps {
   explanation: SHAPExplanationPayload | null;
   alertId?: string;
+  targetEntity?: string;
   height?: number;
 }
 
 export const TreeShapInspector: React.FC<TreeShapInspectorProps> = ({
   explanation,
   alertId,
+  targetEntity,
   height = 320,
 }) => {
   const drivers = explanation?.top_drivers || [];
   const prob = explanation?.predicted_probability ?? 0.0;
-  const baseValue = explanation?.base_value ?? 0.0;
   const analystText = explanation?.analyst_summary || 'No flow selected for TreeSHAP incident triage.';
 
   // Anime.js bar width expansion and row reveal on flow selection change
@@ -43,8 +44,7 @@ export const TreeShapInspector: React.FC<TreeShapInspectorProps> = ({
         });
       });
     }
-  }, [alertId, drivers]);
-
+  }, [alertId, targetEntity, drivers.length]);
 
   // Proportional bar scaling
   let maxAbsShap = 0.001;
@@ -59,7 +59,7 @@ export const TreeShapInspector: React.FC<TreeShapInspectorProps> = ({
 
   return (
     <div
-      className="bg-[#0d1117] border border-[#21262d] rounded-[2px] flex flex-col overflow-hidden"
+      className="shap-inspector-panel bg-[#0d1117] border border-[#21262d] rounded-[2px] flex flex-col overflow-hidden"
       style={{ height: `${height}px` }}
     >
       {/* Panel Header */}
@@ -68,6 +68,11 @@ export const TreeShapInspector: React.FC<TreeShapInspectorProps> = ({
           <span className="w-1.5 h-1.5 rounded-[1px] bg-[#3b82f6] inline-block" />
           <span className="text-[#e6edf3]">COMPONENT 03 //</span>
           <span>TREESHAP INCIDENT ATTRIBUTION INSPECTOR (TIER 5)</span>
+          {targetEntity && (
+            <span className="text-[#58a6ff] font-mono text-[9px] px-1.5 py-0.2 rounded-[2px] bg-[#162b47] border border-[#23426e] tracking-tight">
+              {targetEntity}
+            </span>
+          )}
         </div>
 
         <div>
@@ -94,7 +99,7 @@ export const TreeShapInspector: React.FC<TreeShapInspectorProps> = ({
         <span className="font-heading font-bold text-[#3b82f6] tracking-wider uppercase mr-1">
           ANALYST BRIEF:
         </span>
-        <span>{analystText}</span>
+        <span className="analyst-brief-text">{analystText}</span>
       </div>
 
       {/* Waterfall Rows */}
@@ -147,9 +152,9 @@ export const TreeShapInspector: React.FC<TreeShapInspectorProps> = ({
                   )}
                 </div>
 
-                {/* SHAP Attribution Value */}
+                {/* Delta Sign */}
                 <div
-                  className={`text-right font-semibold text-[9.5px] ${
+                  className={`text-right font-semibold ${
                     isThreat ? 'text-[#F85149]' : 'text-[#3FB950]'
                   }`}
                 >
@@ -161,17 +166,19 @@ export const TreeShapInspector: React.FC<TreeShapInspectorProps> = ({
         )}
       </div>
 
-      {/* Footer Metrics */}
-      <div className="bg-[#161b22] border-t border-[#21262d] px-2.5 py-1 flex justify-between font-mono text-[9px] text-[#8b949e]">
-        <span>
-          BASE VALUE: <strong className="text-[#e6edf3]">{baseValue.toFixed(3)}</strong>
-        </span>
-        <span>
-          CALIBRATED PROB: <strong className="text-[#e6edf3]">{probPct}%</strong>
-        </span>
-        <span>
-          METHOD: <strong className="text-[#e6edf3]">TREESHAP EXACT</strong>
-        </span>
+      {/* Axis Scale Legend */}
+      <div className="bg-[#161b22] border-t border-[#21262d] px-2.5 py-1 flex justify-between items-center font-mono text-[8px] text-[#8b949e] select-none">
+        <div className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-[1px] bg-[#3FB950]" />
+          <span>MITIGATING FEATURE (DECREASES RISK)</span>
+        </div>
+        <div className="text-center font-bold text-[#e6edf3]">
+          DIVERGING ATTRIBUTION (±SHAP)
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-[1px] bg-[#F85149]" />
+          <span>SUSPICIOUS DRIVER (INCREASES RISK)</span>
+        </div>
       </div>
     </div>
   );

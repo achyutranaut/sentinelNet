@@ -34,7 +34,7 @@ export const DriftObservatory: React.FC<DriftObservatoryProps> = ({
         <div className="flex items-center gap-2">
           <DatabaseZap className="w-3.5 h-3.5 text-[#e6edf3]" />
           <span className="text-[#e6edf3]">OPERATIONAL TELEMETRY //</span>
-          <span>STATISTICAL DRIFT OBSERVATORY &amp; RETRAINING STATUS (KS / PSI)</span>
+          <span>STATISTICAL DRIFT OBSERVATORY & RETRAINING STATUS (KS / PSI)</span>
         </div>
 
         <div className="flex items-center gap-3">

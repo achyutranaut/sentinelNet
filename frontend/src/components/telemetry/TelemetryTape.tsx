@@ -25,7 +25,7 @@ export const TelemetryTape: React.FC<TelemetryTapeProps> = ({
   const driftRatio = drift ? `${(drift.drift_feature_ratio * 100).toFixed(1)}%` : '0.0%';
 
   return (
-    <div className="h-9 bg-[#0d1117] border border-[#21262d] rounded-[2px] px-3 flex items-center justify-between font-mono text-[10px] tracking-wide whitespace-nowrap overflow-x-auto shadow-none select-none">
+    <div className="h-9 shrink-0 min-h-[36px] w-full bg-[#0d1117] border border-[#21262d] rounded-[2px] px-3 flex items-center justify-between font-mono text-[10px] tracking-wide whitespace-nowrap overflow-x-auto shadow-none select-none">
       <div className="flex items-center gap-4">
         {/* System Node */}
         <div className="flex items-center gap-1.5">
@@ -51,7 +51,7 @@ export const TelemetryTape: React.FC<TelemetryTapeProps> = ({
           <span className={isSlaCompliant ? 'text-[#3FB950] font-semibold' : 'text-[#F85149] font-bold'}>
             {p95Latency.toFixed(3)} ms (p95)
           </span>
-          <span className="text-[#8b949e]">[&lt; 1.5ms]</span>
+          <span className="text-[#8b949e]">{'[< 1.5ms]'}</span>
         </div>
 
         <span className="text-[#30363d]">|</span>

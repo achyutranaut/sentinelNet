@@ -31,8 +31,23 @@ export async function getMetrics(): Promise<TelemetryMetrics> {
 }
 
 export async function getGraphState(): Promise<GraphStateResponse> {
-  const res = await fetch(`${API_BASE}/graph/state`, { headers: defaultHeaders });
-  if (!res.ok) throw new Error(`Failed to fetch graph state: ${res.status}`);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/graph/state`, { headers: defaultHeaders });
+  } catch (err: any) {
+    throw new Error(`Unable to connect to backend at ${API_BASE} — is the service running? (${err?.message || 'Network error'})`);
+  }
+
+  if (!res.ok) {
+    let errorDetail = '';
+    try {
+      const errorJson = await res.json();
+      errorDetail = errorJson.detail || errorJson.message || JSON.stringify(errorJson);
+    } catch {
+      errorDetail = res.statusText;
+    }
+    throw new Error(`Failed to fetch graph state: HTTP ${res.status} (${errorDetail || 'Server Error'})`);
+  }
   return res.json();
 }
 
