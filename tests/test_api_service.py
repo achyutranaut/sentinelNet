@@ -13,10 +13,21 @@ from src.api.app import app
 from src.ingestion.dataset_loader import NetworkFlowGenerator
 
 
+from src.api.middleware import global_rate_limiter
+
+
 @pytest.fixture(scope="module")
 def client():
     with TestClient(app) as test_client:
+        test_client.headers["X-API-Key"] = "sentinel-dev-secret-key-32b"
         yield test_client
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    global_rate_limiter.reset()
+    yield
+    global_rate_limiter.reset()
 
 
 def test_api_health_endpoint(client):
@@ -270,7 +281,7 @@ def test_alerts_websocket_stream_and_graceful_disconnect(client):
     gen = NetworkFlowGenerator(seed=42)
     attack_flow = gen.generate_known_attacks(1).iloc[0].to_dict()
 
-    with client.websocket_connect("/alerts/stream") as ws:
+    with client.websocket_connect("/alerts/stream?api_key=sentinel-dev-secret-key-32b") as ws:
         init_msg = ws.receive_json()
         assert init_msg.get("event") == "SUBSCRIBED"
 
@@ -335,3 +346,80 @@ def test_api_graph_lateral_movement(client):
     assert "num_nodes" in data
     assert "num_edges" in data
     assert "pivots" in data
+
+
+def test_unauthenticated_requests_rejected_401(client):
+    """Verifies that protected endpoints reject requests lacking valid X-API-Key with HTTP 401."""
+    gen = NetworkFlowGenerator(seed=42)
+    sample_flow = gen.generate_baseline_flows(1).iloc[0].to_dict()
+
+    # Create unauthenticated client (no X-API-Key header)
+    with TestClient(app) as unauth_client:
+        res_score = unauth_client.post("/score", json=sample_flow)
+        assert res_score.status_code == 401
+        assert "API key missing" in res_score.json()["detail"]
+
+        res_evasion = unauth_client.post("/evasion/test", json={"perturbation_budget": 0.1})
+        assert res_evasion.status_code == 401
+
+        res_graph = unauth_client.get("/graph/state")
+        assert res_graph.status_code == 401
+
+        res_drift = unauth_client.get("/drift/status")
+        assert res_drift.status_code == 401
+
+        # Bad key
+        res_bad = unauth_client.post("/score", json=sample_flow, headers={"X-API-Key": "wrong-key"})
+        assert res_bad.status_code == 401
+        assert "Invalid API key" in res_bad.json()["detail"]
+
+
+def test_websocket_unauthenticated_rejected():
+    """Verifies that WebSocket /alerts/stream rejects unauthenticated connection attempts with policy violation."""
+    with TestClient(app) as unauth_client:
+        with pytest.raises(Exception):
+            with unauth_client.websocket_connect("/alerts/stream") as ws:
+                ws.receive_json()
+
+
+def test_evasion_rate_limiting_429(client):
+    """Verifies that exceeding the evasion lab rate limit (5 req/min) returns HTTP 429 and Retry-After header."""
+    global_rate_limiter.reset()
+
+    # Make 5 allowed requests
+    for _ in range(5):
+        res = client.post("/evasion/test", json={"perturbation_budget": 0.0, "sample_size": 5})
+        assert res.status_code == 200
+
+    # 6th request must be throttled
+    res_throttled = client.post("/evasion/test", json={"perturbation_budget": 0.0, "sample_size": 5})
+    assert res_throttled.status_code == 429
+    assert "Rate limit exceeded" in res_throttled.json()["detail"]
+    assert "Retry-After" in res_throttled.headers
+
+
+def test_cors_headers_present():
+    """Verifies that CORS headers are returned for cross-origin requests from frontend."""
+    with TestClient(app) as test_client:
+        res = test_client.options(
+            "/health",
+            headers={
+                "Origin": "http://localhost:5173",
+                "Access-Control-Request-Method": "GET"
+            }
+        )
+        assert res.status_code == 200
+        assert res.headers.get("access-control-allow-origin") in ["*", "http://localhost:5173"]
+
+
+
+def test_legacy_endpoints_return_deprecation_headers(client):
+    """Verifies that legacy endpoints return Deprecation: true and successor Link headers."""
+    gen = NetworkFlowGenerator(seed=42)
+    sample_flow = gen.generate_baseline_flows(1).iloc[0].to_dict()
+
+    res = client.post("/predict", json=sample_flow)
+    assert res.status_code == 200
+    assert res.headers.get("deprecation") == "true"
+    assert "/score" in res.headers.get("link", "")
+
