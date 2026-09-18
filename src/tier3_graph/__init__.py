@@ -1,7 +1,11 @@
-"""Tier 3: Temporal Network Interaction Graph Package.
+import warnings
 
-Tracks host-to-host interaction topology over sliding windows to detect lateral movement.
-"""
+warnings.warn(
+    "Package 'src.tier3_graph' is deprecated and will be removed in SentinelNet 2.0. "
+    "Import directly from 'src.graph.lateral_tracker' instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 from src.graph.lateral_tracker import (
     GraphAnomalyReport,
@@ -10,3 +14,4 @@ from src.graph.lateral_tracker import (
 )
 
 __all__ = ["TemporalLateralTracker", "HostThreatScore", "GraphAnomalyReport"]
+

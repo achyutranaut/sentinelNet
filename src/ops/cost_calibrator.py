@@ -51,9 +51,10 @@ class SOCCostCalibrator:
         self,
         y_true: np.ndarray,
         predicted_probs: np.ndarray,
-        num_candidates: int = 100
+        num_candidates: int = 100,
+        max_false_alarm_rate: float = 0.05
     ) -> CostCalibrationResult:
-        """Finds the optimal decision threshold that minimizes total enterprise risk."""
+        """Finds Neyman-Pearson optimal decision threshold minimizing risk under FAR constraint."""
         candidate_thresholds = np.linspace(0.01, 0.99, num_candidates)
         best_thresh = 0.5
         min_cost = float("inf")
@@ -66,10 +67,17 @@ class SOCCostCalibrator:
         for thresh in candidate_thresholds:
             preds = (predicted_probs >= thresh).astype(int)
             cost, tn, fp, fn, tp = self.compute_total_cost(y_true, preds)
-            if cost < min_cost:
+            far = fp / max(1, fp + tn)
+            if far <= max_false_alarm_rate and cost < min_cost:
                 min_cost = cost
                 best_thresh = float(thresh)
                 best_stats = (tn, fp, fn, tp)
+
+        if min_cost == float("inf"):
+            best_thresh = 0.5
+            _, tn, fp, fn, tp = self.compute_total_cost(y_true, default_preds)
+            best_stats = (tn, fp, fn, tp)
+            min_cost = default_cost
 
         opt_tn, opt_fp, opt_fn, opt_tp = best_stats
         opt_far = opt_fp / max(1, opt_fp + opt_tn)

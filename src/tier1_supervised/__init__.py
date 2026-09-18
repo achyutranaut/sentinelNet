@@ -1,7 +1,11 @@
-"""Tier 1: High-Throughput Supervised Flow Classifier Package.
+import warnings
 
-Provides LightGBM-based sub-millisecond per-flow classification of known attack signatures.
-"""
+warnings.warn(
+    "Package 'src.tier1_supervised' is deprecated and will be removed in SentinelNet 2.0. "
+    "Import directly from 'src.models.supervised_classifier' instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 from src.models.supervised_classifier import (
     ClassifierMetrics,
@@ -9,3 +13,4 @@ from src.models.supervised_classifier import (
 )
 
 __all__ = ["SupervisedFlowClassifier", "ClassifierMetrics"]
+

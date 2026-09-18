@@ -1,7 +1,11 @@
-"""Tier 4: Adversarial Evasion & Traffic Perturbation Engine Package.
+import warnings
 
-Simulates domain perturbations and gradient evasion attacks to benchmark resilience.
-"""
+warnings.warn(
+    "Package 'src.tier4_adversarial' is deprecated and will be removed in SentinelNet 2.0. "
+    "Import directly from 'src.adversarial.perturbation_engine' instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 from src.adversarial.perturbation_engine import (
     RobustnessCurvePoint,
@@ -9,3 +13,4 @@ from src.adversarial.perturbation_engine import (
 )
 
 __all__ = ["TrafficPerturbationEngine", "RobustnessCurvePoint"]
+

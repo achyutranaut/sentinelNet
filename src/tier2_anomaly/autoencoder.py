@@ -19,7 +19,7 @@ import yaml
 
 
 class FlowAutoencoderNet(nn.Module):
-    """Symmetric bottleneck feed-forward autoencoder."""
+    """Symmetric bottleneck feed-forward autoencoder for tabular NetFlow."""
 
     def __init__(self, input_dim: int = 30, latent_dim: int = 4):
         super().__init__()
@@ -56,10 +56,10 @@ class Tier2AnomalyAutoencoder:
         latent_dim: int = 4,
         learning_rate: float = 0.001,
         weight_decay: float = 0.0001,
-        epochs: int = 25,
-        batch_size: int = 64,
+        epochs: int = 20,
+        batch_size: int = 128,
         threshold_percentile: float = 98.5,
-        device: Optional[str] = None
+        device: str = "cpu"
     ):
         self.input_dim = input_dim
         self.latent_dim = latent_dim
@@ -68,7 +68,7 @@ class Tier2AnomalyAutoencoder:
         self.epochs = epochs
         self.batch_size = batch_size
         self.threshold_percentile = threshold_percentile
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device(device)
         
         self.net = FlowAutoencoderNet(input_dim, latent_dim).to(self.device)
         self.threshold: float = 0.0
@@ -117,7 +117,6 @@ class Tier2AnomalyAutoencoder:
         tensor_x = torch.tensor(X, dtype=torch.float32).to(self.device)
         with torch.no_grad():
             recon = self.net(tensor_x)
-            # Row-wise MSE
             mse = torch.mean((tensor_x - recon) ** 2, dim=1).cpu().numpy()
         return mse
 
@@ -196,14 +195,14 @@ class Tier2AnomalyAutoencoder:
         }, filepath)
 
     @classmethod
-    def load(cls, filepath: str, device: Optional[str] = None) -> "Tier2AnomalyAutoencoder":
-        dev = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    def load(cls, filepath: str, device: str = "cpu") -> "Tier2AnomalyAutoencoder":
+        dev = torch.device(device)
         checkpoint = torch.load(filepath, map_location=dev, weights_only=True)
         instance = cls(
             input_dim=checkpoint["input_dim"],
             latent_dim=checkpoint["latent_dim"],
             threshold_percentile=checkpoint.get("threshold_percentile", 98.5),
-            device=dev
+            device=device
         )
         instance.net.load_state_dict(checkpoint["state_dict"])
         instance.threshold = checkpoint["threshold"]
@@ -219,7 +218,7 @@ def run_tier2_benchmark(config_path: str = "configs/config.yaml"):
     splits = joblib.load("data/processed/dataset_splits.joblib")
 
     # Extract benign validation flows for threshold calibration
-    benign_val_mask = splits.val_metadata["attack_type"] == "BENIGN"
+    benign_val_mask = (splits.val_metadata["attack_type"] == "BENIGN").to_numpy()
     X_val_benign = splits.X_val[benign_val_mask]
 
     detector = Tier2AnomalyAutoencoder(
@@ -227,9 +226,10 @@ def run_tier2_benchmark(config_path: str = "configs/config.yaml"):
         latent_dim=ae_cfg.get("latent_dim", 4),
         learning_rate=ae_cfg.get("learning_rate", 0.001),
         weight_decay=ae_cfg.get("weight_decay", 0.0001),
-        epochs=ae_cfg.get("epochs", 25),
-        batch_size=ae_cfg.get("batch_size", 64),
-        threshold_percentile=ae_cfg.get("reconstruction_threshold_percentile", 98.5)
+        epochs=ae_cfg.get("epochs", 20),
+        batch_size=ae_cfg.get("batch_size", 128),
+        threshold_percentile=ae_cfg.get("reconstruction_threshold_percentile", 98.5),
+        device="cpu"
     )
 
     print("=" * 60)

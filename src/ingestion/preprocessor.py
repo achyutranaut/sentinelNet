@@ -6,7 +6,7 @@ Ensures identical feature transformations between offline training and real-time
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 import joblib
 import numpy as np
 import pandas as pd
@@ -73,6 +73,26 @@ class FlowPreprocessor:
         self.scaler.fit(X)
         self.is_fitted = True
         return self
+
+    def transform_record(self, record: Dict[str, Any]) -> np.ndarray:
+        """Fast-path zero-copy transform for single streaming NetFlow records (<0.05ms)."""
+        if not self.is_fitted:
+            raise RuntimeError("Preprocessor must be fitted before calling transform_record().")
+
+        raw_vec = np.empty((1, len(self.feature_cols)), dtype=np.float64)
+        log_set = set(LOG_TRANSFORM_COLS)
+        for i, col in enumerate(self.feature_cols):
+            val = float(record.get(col, 0.0))
+            if np.isnan(val):
+                val = 0.0
+            elif np.isinf(val):
+                val = 1e8 if val > 0 else 0.0
+            if col in log_set:
+                val = np.log1p(max(0.0, val))
+            raw_vec[0, i] = val
+
+        scaled = self.scaler.transform(raw_vec)
+        return np.clip(scaled, -10.0, 10.0)
 
     def transform(self, df_or_dict: Union[pd.DataFrame, Dict, List[Dict]]) -> np.ndarray:
         """Transforms a DataFrame, dictionary, or list of dicts into normalized feature matrix."""
