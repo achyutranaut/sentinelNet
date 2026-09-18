@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Send, Shield, AlertTriangle, Server } from 'lucide-react';
 import { createScenarioFlowBatch, scoreFlow } from '@/lib/api';
 import type { AlertStreamItem } from '@/lib/types';
+import { CustomSlider } from '@/components/common/CustomSlider';
 
 interface OperationalSidebarProps {
   costThreshold: number;
@@ -61,10 +62,10 @@ export const OperationalSidebar: React.FC<OperationalSidebarProps> = ({
             is_attack: isAttack,
             explanation: {
               predicted_probability: res.supervised_probability,
-              base_value: 0.12,
+              base_value: 0.15,
               analyst_summary: isAttack
-                ? `Incident flagged by ${res.detection_tier} with calibrated probability ${(res.supervised_probability * 100).toFixed(1)}%.`
-                : `Benign enterprise telemetry. Signature probability ${(res.supervised_probability * 100).toFixed(1)}% below threshold.`,
+                ? `High-risk telemetry breach flagged by ${res.detection_tier}. Model confidence: ${(res.supervised_probability * 100).toFixed(1)}%.`
+                : `Benign operational flow verified by ${res.detection_tier}.`,
               top_drivers: [
                 {
                   feature: 'flow_packets_per_sec',
@@ -114,26 +115,28 @@ export const OperationalSidebar: React.FC<OperationalSidebarProps> = ({
   };
 
   return (
-    <aside className="w-72 bg-[#0d1117] border-r border-[#21262d] flex flex-col p-3 text-mono select-none overflow-y-auto shrink-0">
+    <aside className="w-80 bg-[#0d1117] border-r border-[#1f2937] flex flex-col p-4 select-none overflow-y-auto shrink-0 shadow-lg">
       {/* Sidebar Header */}
-      <div className="font-heading text-[11px] font-bold tracking-widest text-[#8b949e] border-b border-[#21262d] pb-2 mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <Server className="w-3.5 h-3.5 text-[#3FB950]" />
-          <span>OPERATIONAL CONTROLS</span>
+      <div className="font-heading text-xs font-bold tracking-widest text-slate-400 border-b border-[#1f2937] pb-3 mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Server className="w-4 h-4 text-[#3FB950]" />
+          <span className="text-slate-200">OPERATIONAL CONTROLS</span>
         </div>
-        <span className="text-[9px] text-[#3FB950] font-mono">[AIR-GAPPED]</span>
+        <span className="text-[11px] text-[#3FB950] font-mono px-1.5 py-0.5 rounded bg-[#3FB950]/10 border border-[#3FB950]/30 font-semibold">
+          AIR-GAPPED
+        </span>
       </div>
 
-      <div className="space-y-4 text-[10px]">
+      <div className="space-y-5">
         {/* Scenario Selection */}
         <div>
-          <label className="font-heading text-[9.5px] font-bold text-[#8b949e] uppercase tracking-wider block mb-1.5">
+          <label className="font-sans text-xs font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">
             Traffic Injection Scenario
           </label>
           <select
             value={selectedScenario}
             onChange={(e) => setSelectedScenario(e.target.value)}
-            className="w-full bg-[#161b22] border border-[#21262d] rounded-[2px] px-2 py-1.5 text-[#e6edf3] font-mono text-[10px] focus:outline-none focus:border-[#30363d] cursor-pointer"
+            className="w-full bg-[#161b22] border border-[#21262d] focus:border-[#38bdf8] rounded px-3 py-2 text-slate-200 font-sans text-xs outline-none transition-colors cursor-pointer"
           >
             {scenarios.map((scen) => (
               <option key={scen.id} value={scen.id}>
@@ -143,99 +146,89 @@ export const OperationalSidebar: React.FC<OperationalSidebarProps> = ({
           </select>
         </div>
 
-        {/* Batch Size Slider */}
+        {/* Batch Size Selector */}
         <div>
-          <div className="flex justify-between items-center mb-1">
-            <label className="font-heading text-[9.5px] font-bold text-[#8b949e] uppercase tracking-wider">
-              Ingestion Batch Size
+          <div className="flex justify-between items-center mb-1.5">
+            <label className="font-sans text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              Batch Ingestion Size
             </label>
-            <span className="font-mono text-[#e6edf3] font-semibold">{batchSize} flows</span>
+            <span className="font-mono text-xs font-bold text-[#38bdf8] px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">
+              {batchSize} flows
+            </span>
           </div>
-          <input
-            type="range"
-            min="5"
-            max="60"
-            step="5"
-            value={batchSize}
-            onChange={(e) => setBatchSize(parseInt(e.target.value, 10))}
-            className="w-full accent-[#3FB950] cursor-pointer"
-          />
+          <div className="grid grid-cols-4 gap-1.5">
+            {[5, 15, 30, 50].map((size) => (
+              <button
+                key={size}
+                type="button"
+                onClick={() => setBatchSize(size)}
+                className={`py-1.5 rounded font-mono text-xs font-semibold transition-all cursor-pointer border ${
+                  batchSize === size
+                    ? 'bg-[#38bdf8]/20 text-[#38bdf8] border-[#38bdf8]/50 shadow-sm'
+                    : 'bg-[#161b22] text-slate-400 border-[#21262d] hover:border-slate-600 hover:text-slate-200'
+                }`}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Ingest Button */}
+        {/* Primary Action Button */}
         <button
-          onClick={handleInjectBatch}
+          type="button"
           disabled={isInjecting}
-          className="w-full bg-[#161b22] hover:bg-[#21262d] active:bg-[#30363d] text-[#e6edf3] border border-[#30363d] rounded-[2px] py-2 px-3 font-heading font-bold text-[10.5px] uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-colors disabled:opacity-50"
+          onClick={handleInjectBatch}
+          className="w-full bg-[#3FB950] hover:bg-[#2ea043] active:bg-[#238636] text-[#090b0e] rounded py-2.5 px-4 font-heading font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all shadow-[0_0_12px_rgba(63,185,80,0.25)] disabled:opacity-50"
         >
-          <Send className={`w-3.5 h-3.5 text-[#3FB950] ${isInjecting ? 'animate-spin' : ''}`} />
-          <span>{isInjecting ? 'SCORING VIA /SCORE...' : 'INGEST & SCORE FLOW BATCH'}</span>
+          <Send className={`w-4 h-4 ${isInjecting ? 'animate-spin' : ''}`} />
+          <span>{isInjecting ? 'SCORING FLOWS...' : 'INGEST & SCORE FLOW BATCH'}</span>
         </button>
 
         {lastBatchTime !== null && (
-          <div className="text-[9px] font-mono text-[#8b949e] text-center">
-            Last batch scored in: <span className="text-[#3FB950] font-semibold">{lastBatchTime.toFixed(1)} ms</span>
+          <div className="text-xs font-mono text-slate-400 text-center bg-slate-900/60 py-1.5 rounded border border-slate-800">
+            Batch scored in: <span className="text-[#3FB950] font-bold">{lastBatchTime.toFixed(1)} ms</span>
           </div>
         )}
 
-        {/* Detection Threshold Calibration */}
-        <div className="pt-3 border-t border-[#21262d] space-y-3">
-          <div className="font-heading text-[10px] font-bold text-[#8b949e] uppercase tracking-wider flex items-center gap-1.5">
-            <Shield className="w-3.5 h-3.5 text-[#D29922]" />
+        {/* Detection Threshold Calibration using CustomSlider */}
+        <div className="pt-4 border-t border-[#1f2937] space-y-4">
+          <div className="font-heading text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+            <Shield className="w-4 h-4 text-[#D29922]" />
             <span>Threshold Calibration</span>
           </div>
 
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="font-mono text-[9px] text-[#8b949e]">
-                Tier 1 Cost-Calibrated Thresh
-              </label>
-              <span className="font-mono text-[#D29922] font-semibold">{costThreshold.toFixed(2)}</span>
-            </div>
-            <input
-              type="range"
-              min="0.01"
-              max="0.99"
-              step="0.01"
-              value={costThreshold}
-              onChange={(e) => onCostThresholdChange(parseFloat(e.target.value))}
-              className="w-full accent-[#D29922] cursor-pointer"
-            />
-            <p className="text-[8px] text-[#8b949e] mt-0.5">
-              Optimal Neyman-Pearson threshold minimizing $50k FN breach penalty.
-            </p>
-          </div>
+          <CustomSlider
+            label="Tier 1 Cost-Calibrated Thresh"
+            sublabel="Optimal Neyman-Pearson ($50k FN breach penalty)"
+            min={0.01}
+            max={0.99}
+            step={0.01}
+            value={costThreshold}
+            onChange={onCostThresholdChange}
+            color="#D29922"
+          />
 
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="font-mono text-[9px] text-[#8b949e]">
-                Tier 2 Autoencoder Anomaly Cutoff
-              </label>
-              <span className="font-mono text-[#3b82f6] font-semibold">{aeCutoff.toFixed(2)}</span>
-            </div>
-            <input
-              type="range"
-              min="0.10"
-              max="2.00"
-              step="0.05"
-              value={aeCutoff}
-              onChange={(e) => onAeCutoffChange(parseFloat(e.target.value))}
-              className="w-full accent-[#3b82f6] cursor-pointer"
-            />
-            <p className="text-[8px] text-[#8b949e] mt-0.5">
-              Reconstruction MSE cutoff for zero-day novel beaconing.
-            </p>
-          </div>
+          <CustomSlider
+            label="Tier 2 AE Anomaly Cutoff"
+            sublabel="Reconstruction MSE for novel beaconing"
+            min={0.10}
+            max={2.00}
+            step={0.05}
+            value={aeCutoff}
+            onChange={onAeCutoffChange}
+            color="#38bdf8"
+          />
         </div>
 
         {/* Air-Gapped Security Notice */}
-        <div className="pt-3 border-t border-[#21262d]">
-          <div className="bg-[#161b22] border border-[#21262d] rounded-[2px] p-2 space-y-1 text-[8.5px] text-[#8b949e]">
-            <div className="flex items-center gap-1 text-[#D29922] font-semibold">
-              <AlertTriangle className="w-3 h-3" />
+        <div className="pt-4 border-t border-[#1f2937]">
+          <div className="bg-[#161b22] border border-[#21262d] rounded p-3 space-y-1.5 text-xs text-slate-400">
+            <div className="flex items-center gap-1.5 text-[#D29922] font-semibold text-xs">
+              <AlertTriangle className="w-3.5 h-3.5" />
               <span>AIR-GAPPED COMPLIANCE</span>
             </div>
-            <p>
+            <p className="leading-relaxed">
               Direct zero-trust connection to SentinelNet FastAPI serving layer. Client executes zero in-process ML models.
             </p>
           </div>

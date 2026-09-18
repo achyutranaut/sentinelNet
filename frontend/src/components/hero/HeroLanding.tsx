@@ -1,8 +1,9 @@
 import { ArrowRight, Terminal, Zap, Eye } from 'lucide-react';
+import type { AppRoute } from '@/components/scoreboard/ScoreboardHeader';
 
 interface HeroLandingProps {
   onLaunchConsole: () => void;
-  onExploreTab: (tab: string) => void;
+  onExploreTab: (route: AppRoute) => void;
 }
 
 export const HeroLanding: React.FC<HeroLandingProps> = ({
@@ -59,7 +60,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
           </button>
 
           <button
-            onClick={() => onExploreTab('graph')}
+            onClick={() => onExploreTab('/topology')}
             className="flex items-center gap-2 px-5 py-3 rounded-[2px] bg-[#0a1422] hover:bg-[#162b47] text-[#58a6ff] border border-[#23426e] font-mono text-xs tracking-wider uppercase transition-all duration-150 cursor-pointer"
           >
             <Eye className="w-4 h-4 text-[#58a6ff]" />
@@ -67,7 +68,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
           </button>
 
           <button
-            onClick={() => onExploreTab('evasion')}
+            onClick={() => onExploreTab('/adversarial')}
             className="flex items-center gap-2 px-5 py-3 rounded-[2px] bg-[#0a1422] hover:bg-[#162b47] text-[#bc8cff] border border-[#3b2a59] font-mono text-xs tracking-wider uppercase transition-all duration-150 cursor-pointer"
           >
             <Zap className="w-4 h-4 text-[#bc8cff]" />

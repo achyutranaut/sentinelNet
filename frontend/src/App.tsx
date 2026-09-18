@@ -15,17 +15,14 @@ import type {
   HealthResponse,
   TelemetryMetrics,
 } from '@/lib/types';
-import { ScoreboardHeader } from '@/components/scoreboard/ScoreboardHeader';
+import { ScoreboardHeader, type AppRoute } from '@/components/scoreboard/ScoreboardHeader';
 import { HeroLanding } from '@/components/hero/HeroLanding';
 import { TelemetryTape } from '@/components/telemetry/TelemetryTape';
 import { OperationalSidebar } from '@/components/controls/OperationalSidebar';
-import { LiveAlertStream } from '@/components/alerts/LiveAlertStream';
-import { NetworkTopologyCanvas } from '@/components/graph/NetworkTopologyCanvas';
-import { TreeShapInspector } from '@/components/explainability/TreeShapInspector';
-import { EvasionLab } from '@/components/evasion/EvasionLab';
-import { DriftObservatory } from '@/components/drift/DriftObservatory';
-
-type NavTab = 'overview' | 'stream' | 'graph' | 'shap' | 'evasion' | 'drift';
+import { OverviewView } from '@/views/OverviewView';
+import { TopologyView } from '@/views/TopologyView';
+import { AdversarialView } from '@/views/AdversarialView';
+import { DriftView } from '@/views/DriftView';
 
 export const App: React.FC = () => {
   const [health, setHealth] = useState<HealthResponse | null>(null);
@@ -35,8 +32,17 @@ export const App: React.FC = () => {
   const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting');
 
   // Navigation & Hero States
-  const [activeTab, setActiveTab] = useState<NavTab>('overview');
+  const [activeRoute, setActiveRoute] = useState<AppRoute>(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname;
+      if (p === '/topology' || p === '/adversarial' || p === '/drift' || p === '/overview') {
+        return p;
+      }
+    }
+    return '/overview';
+  });
   const [showHero, setShowHero] = useState<boolean>(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
 
   // Shared Application State for Alerts & Cross-Panel Triage
   const [alerts, setAlerts] = useState<AlertStreamItem[]>([]);
@@ -50,6 +56,30 @@ export const App: React.FC = () => {
   const [isGraphLoading, setIsGraphLoading] = useState(false);
   const [graphError, setGraphError] = useState<string | null>(null);
   const [isDriftLoading, setIsDriftLoading] = useState(false);
+
+  // Synchronize route changes with browser history
+  const handleNavigate = useCallback((route: AppRoute) => {
+    setActiveRoute(route);
+    if (typeof window !== 'undefined' && window.location.pathname !== route) {
+      window.history.pushState(null, '', route);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const p = window.location.pathname;
+      if (p === '/topology' || p === '/adversarial' || p === '/drift' || p === '/overview') {
+        setActiveRoute(p);
+      } else {
+        setActiveRoute('/overview');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    if (window.location.pathname === '/' || window.location.pathname === '') {
+      window.history.replaceState(null, '', '/overview');
+    }
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Fetch initial graph state
   const refreshGraph = useCallback(async () => {
@@ -296,7 +326,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#090b0e] text-[#e6edf3]">
-      {/* 1. Persistent Top Scoreboard Header (CyberWatch Reference Pattern) */}
+      {/* 1. Persistent Top Scoreboard Header (CyberWatch Reference Pattern) with Route Navigation */}
       <ScoreboardHeader
         criticalCount={criticalCount}
         anomalyCount={anomalyCount}
@@ -306,18 +336,20 @@ export const App: React.FC = () => {
         threatScore={threatScore}
         showHero={showHero}
         onToggleHero={() => setShowHero(!showHero)}
+        activeRoute={activeRoute}
+        onRouteChange={handleNavigate}
       />
 
-      {/* 2. Hero Landing Context Section (Restyled to SentinelNet Terminal Aesthetic) */}
+      {/* 2. Hero Landing Context Section */}
       {showHero && (
         <HeroLanding
           onLaunchConsole={() => {
             setShowHero(false);
-            setActiveTab('overview');
+            handleNavigate('/overview');
           }}
-          onExploreTab={(tab) => {
+          onExploreTab={(route) => {
             setShowHero(false);
-            setActiveTab(tab as NavTab);
+            handleNavigate(route);
           }}
         />
       )}
@@ -325,236 +357,81 @@ export const App: React.FC = () => {
       {/* Main Operational Container */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Operational Sidebar Controls */}
-        <OperationalSidebar
-          costThreshold={costThreshold}
-          onCostThresholdChange={setCostThreshold}
-          aeCutoff={aeCutoff}
-          onAeCutoffChange={setAeCutoff}
-          onBatchScored={handleBatchScored}
-          onRefreshGraph={refreshGraph}
-        />
+        {isSidebarOpen && (
+          <OperationalSidebar
+            costThreshold={costThreshold}
+            onCostThresholdChange={setCostThreshold}
+            aeCutoff={aeCutoff}
+            onAeCutoffChange={setAeCutoff}
+            onBatchScored={handleBatchScored}
+            onRefreshGraph={refreshGraph}
+          />
+        )}
 
         {/* Center Operational Workspace */}
-        <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#090b0e]">
-          {/* Top 36px Telemetry Ribbon */}
-          <div className="p-2 pb-0">
-            <TelemetryTape
-              health={health}
-              metrics={metrics}
-              drift={drift}
-              wsStatus={wsStatus}
-              costThreshold={costThreshold}
-            />
-          </div>
-
-          {/* CyberWatch-style Navigation Tab Bar */}
-          <div className="px-2 pt-2">
-            <div className="flex items-center gap-1.5 p-1 bg-[#060c14] border border-[#1b2738] rounded-[2px] font-mono text-[9px] tracking-wider select-none overflow-x-auto">
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`tab-btn px-3 py-1.5 rounded-[2px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'overview'
-                    ? 'bg-[#58a6ff]/20 text-[#58a6ff] border border-[#58a6ff]/50 shadow-[0_0_8px_rgba(88,166,255,0.2)]'
-                    : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#162b47]/40 border border-transparent'
-                }`}
-              >
-                ⬡ OVERVIEW
-              </button>
-
-              <button
-                onClick={() => setActiveTab('stream')}
-                className={`tab-btn px-3 py-1.5 rounded-[2px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'stream'
-                    ? 'bg-[#3fb950]/20 text-[#3fb950] border border-[#3fb950]/50 shadow-[0_0_8px_rgba(63,185,80,0.2)]'
-                    : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#162b47]/40 border border-transparent'
-                }`}
-              >
-                ⚡ LIVE STREAM
-              </button>
-
-              <button
-                onClick={() => setActiveTab('graph')}
-                className={`tab-btn px-3 py-1.5 rounded-[2px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'graph'
-                    ? 'bg-[#bc8cff]/20 text-[#bc8cff] border border-[#bc8cff]/50 shadow-[0_0_8px_rgba(188,140,255,0.2)]'
-                    : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#162b47]/40 border border-transparent'
-                }`}
-              >
-                ⬡ TOPOLOGY GRAPH
-              </button>
-
-              <button
-                onClick={() => setActiveTab('shap')}
-                className={`tab-btn px-3 py-1.5 rounded-[2px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'shap'
-                    ? 'bg-[#58a6ff]/20 text-[#58a6ff] border border-[#58a6ff]/50 shadow-[0_0_8px_rgba(88,166,255,0.2)]'
-                    : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#162b47]/40 border border-transparent'
-                }`}
-              >
-                ◈ TREESHAP TRIAGE
-              </button>
-
-              <button
-                onClick={() => setActiveTab('evasion')}
-                className={`tab-btn px-3 py-1.5 rounded-[2px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'evasion'
-                    ? 'bg-[#f85149]/20 text-[#f85149] border border-[#f85149]/50 shadow-[0_0_8px_rgba(248,81,73,0.2)]'
-                    : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#162b47]/40 border border-transparent'
-                }`}
-              >
-                ⚔ EVASION LAB
-              </button>
-
-              <button
-                onClick={() => setActiveTab('drift')}
-                className={`tab-btn px-3 py-1.5 rounded-[2px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'drift'
-                    ? 'bg-[#d29922]/20 text-[#d29922] border border-[#d29922]/50 shadow-[0_0_8px_rgba(210,153,34,0.2)]'
-                    : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#162b47]/40 border border-transparent'
-                }`}
-              >
-                ∿ DRIFT OBSERVATORY
-              </button>
-
-              <div className="ml-auto text-[8px] text-[#527194] hidden sm:block pr-2">
-                MODE: <strong className="text-[#58a6ff]">{activeTab.toUpperCase()}</strong>
-              </div>
+        <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#090b0e] p-4 lg:p-6">
+          {/* Top Operational Telemetry Ribbon with Sidebar Toggle */}
+          <div className="mb-4 shrink-0 flex items-center gap-3">
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              title={isSidebarOpen ? 'Collapse Controls Sidebar' : 'Expand Controls Sidebar'}
+              className="px-2.5 py-1.5 rounded bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-xs font-mono text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 shrink-0 shadow-sm cursor-pointer"
+            >
+              <span className="text-[#38bdf8] font-bold">{isSidebarOpen ? '◀' : '▶'}</span>
+              <span className="hidden sm:inline tracking-wider font-semibold">
+                {isSidebarOpen ? 'COLLAPSE CONTROLS' : 'OPERATIONAL CONTROLS'}
+              </span>
+            </button>
+            <div className="flex-1 min-w-0">
+              <TelemetryTape
+                health={health}
+                metrics={metrics}
+                drift={drift}
+                wsStatus={wsStatus}
+                costThreshold={costThreshold}
+              />
             </div>
           </div>
 
-          {/* Dynamic Tab Views */}
-          <div className="p-2 space-y-2">
-            {/* TAB 1: OVERVIEW (Full Multi-Panel Command Center) */}
-            {activeTab === 'overview' && (
-              <>
-                <div className="grid grid-cols-1 lg:grid-cols-10 gap-2">
-                  {/* Left Column (60%): Live Alert Stream + Temporal Graph */}
-                  <div className="lg:col-span-6 flex flex-col gap-2">
-                    <LiveAlertStream
-                      alerts={alerts}
-                      selectedAlertId={selectedAlert?.alert_id ?? null}
-                      onSelectAlert={handleSelectAlert}
-                      height={370}
-                    />
-
-                    <NetworkTopologyCanvas
-                      graphState={graphState}
-                      onRefresh={refreshGraph}
-                      isLoading={isGraphLoading}
-                      error={graphError}
-                      height={440}
-                      selectedNodeId={selectedNodeId}
-                      onSelectNode={handleSelectNode}
-                    />
-                  </div>
-
-                  {/* Right Column (40%): TreeSHAP Inspector + Evasion Lab */}
-                  <div className="lg:col-span-4 flex flex-col gap-2">
-                    <TreeShapInspector
-                      explanation={selectedAlert?.explanation ?? null}
-                      alertId={selectedAlert?.alert_id}
-                      targetEntity={selectedAlert ? `${selectedAlert.src_ip} (${selectedAlert.attack_type || 'FLOW'})` : undefined}
-                      height={370}
-                    />
-
-                    <EvasionLab
-                      currentEpsilon={currentEpsilon}
-                      onEpsilonChange={setCurrentEpsilon}
-                      height={440}
-                    />
-                  </div>
-                </div>
-
-                {/* Bottom Operational Drawer: Statistical Drift Observatory */}
-                <DriftObservatory
-                  drift={drift}
-                  onRefresh={refreshDrift}
-                  isLoading={isDriftLoading}
-                />
-              </>
+          {/* Dedicated Route View */}
+          <div className="flex-1 min-h-0">
+            {activeRoute === '/overview' && (
+              <OverviewView
+                alerts={alerts}
+                selectedAlert={selectedAlert}
+                onSelectAlert={handleSelectAlert}
+                graphState={graphState}
+                drift={drift}
+                threatScore={threatScore}
+                onNavigate={handleNavigate}
+              />
             )}
 
-            {/* TAB 2: LIVE STREAM (Full Width) */}
-            {activeTab === 'stream' && (
-              <div className="space-y-2">
-                <LiveAlertStream
-                  alerts={alerts}
-                  selectedAlertId={selectedAlert?.alert_id ?? null}
-                  onSelectAlert={handleSelectAlert}
-                  height={560}
-                />
-                <TreeShapInspector
-                  explanation={selectedAlert?.explanation ?? null}
-                  alertId={selectedAlert?.alert_id}
-                  targetEntity={selectedAlert ? `${selectedAlert.src_ip} (${selectedAlert.attack_type || 'FLOW'})` : undefined}
-                  height={280}
-                />
-              </div>
+            {activeRoute === '/topology' && (
+              <TopologyView
+                graphState={graphState}
+                onRefreshGraph={refreshGraph}
+                isLoading={isGraphLoading}
+                error={graphError}
+                selectedNodeId={selectedNodeId}
+                selectedAlert={selectedAlert}
+                onSelectNode={handleSelectNode}
+              />
             )}
 
-            {/* TAB 3: TOPOLOGY GRAPH (Full Screen / Focus Mode) */}
-            {activeTab === 'graph' && (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
-                <div className="lg:col-span-8">
-                  <NetworkTopologyCanvas
-                    graphState={graphState}
-                    onRefresh={refreshGraph}
-                    isLoading={isGraphLoading}
-                    error={graphError}
-                    height={640}
-                    selectedNodeId={selectedNodeId}
-                    onSelectNode={handleSelectNode}
-                  />
-                </div>
-                <div className="lg:col-span-4 flex flex-col gap-2">
-                  <TreeShapInspector
-                    explanation={selectedAlert?.explanation ?? null}
-                    alertId={selectedAlert?.alert_id}
-                    targetEntity={selectedAlert ? `${selectedAlert.src_ip} (${selectedAlert.attack_type || 'FLOW'})` : undefined}
-                    height={640}
-                  />
-                </div>
-              </div>
+            {activeRoute === '/adversarial' && (
+              <AdversarialView
+                currentEpsilon={currentEpsilon}
+                onEpsilonChange={setCurrentEpsilon}
+              />
             )}
 
-            {/* TAB 4: TREESHAP TRIAGE (Focused Explainability Waterfall) */}
-            {activeTab === 'shap' && (
-              <div className="space-y-2">
-                <TreeShapInspector
-                  explanation={selectedAlert?.explanation ?? null}
-                  alertId={selectedAlert?.alert_id}
-                  targetEntity={selectedAlert ? `${selectedAlert.src_ip} (${selectedAlert.attack_type || 'FLOW'})` : undefined}
-                  height={480}
-                />
-                <LiveAlertStream
-                  alerts={alerts}
-                  selectedAlertId={selectedAlert?.alert_id ?? null}
-                  onSelectAlert={handleSelectAlert}
-                  height={320}
-                />
-              </div>
-            )}
-
-            {/* TAB 5: EVASION LAB (Full Width) */}
-            {activeTab === 'evasion' && (
-              <div className="space-y-2">
-                <EvasionLab
-                  currentEpsilon={currentEpsilon}
-                  onEpsilonChange={setCurrentEpsilon}
-                  height={620}
-                />
-              </div>
-            )}
-
-            {/* TAB 6: DRIFT OBSERVATORY (Full Width) */}
-            {activeTab === 'drift' && (
-              <div className="space-y-2">
-                <DriftObservatory
-                  drift={drift}
-                  onRefresh={refreshDrift}
-                  isLoading={isDriftLoading}
-                />
-              </div>
+            {activeRoute === '/drift' && (
+              <DriftView
+                drift={drift}
+                onRefreshDrift={refreshDrift}
+                isLoading={isDriftLoading}
+              />
             )}
           </div>
         </main>

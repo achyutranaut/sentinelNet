@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  --font-mono: 'IBM Plex Mono', monospace;
-  --font-heading: 'Space Grotesk', sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+  --font-heading: 'Space Grotesk', 'Inter', sans-serif;
 
   --color-background: #090b0e;
   --color-surface: #0d1117;
@@ -16,11 +17,12 @@
   --color-critical: #F85149;
   --color-warning: #D29922;
   --color-secure: #3FB950;
+  --color-accent: #38bdf8;
 
-  --radius-sm: 2px;
-  --radius-md: 2px;
-  --radius-lg: 2px;
-  --radius-xl: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
 }
 
 :root {
@@ -36,9 +38,9 @@
 html, body {
   background-color: #090b0e;
   color: #e6edf3;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  line-height: 1.4;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -53,95 +55,183 @@ html, body {
   width: 100%;
 }
 
-/* Headers strictly Space Grotesk */
+/* Typography Scale */
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Space Grotesk', sans-serif;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: #e6edf3;
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #f0f6fc;
 }
 
-/* Tables and data values strictly IBM Plex Mono */
-code, pre, table, input, select, button {
-  font-family: 'IBM Plex Mono', monospace;
+/* Numeric and code values strictly Monospace */
+code, pre, .font-mono, .mono-val {
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
 }
 
-/* Flat panels: 2px radius, 1px border, zero shadow */
-.soc-panel {
+/* Modern Card Layout */
+.soc-card {
   background-color: #0d1117;
   border: 1px solid #21262d;
-  border-radius: 2px;
-  box-shadow: none !important;
+  border-radius: 6px;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.soc-card:hover {
+  border-color: #30363d;
 }
 
 .soc-header {
   background-color: #161b22;
   border-bottom: 1px solid #21262d;
-  padding: 6px 10px;
+  padding: 10px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #8b949e;
+  color: #94a3b8;
+}
+
+/* Stat Cards */
+.stat-card {
+  background: linear-gradient(180deg, #111827 0%, #0d1117 100%);
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  padding: 16px 20px;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-card:hover {
+  border-color: #374151;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 /* Severity Badges */
 .badge-critical {
-  background-color: #F85149;
-  color: #0d1117;
+  background-color: rgba(248, 81, 73, 0.15);
+  color: #F85149;
+  border: 1px solid rgba(248, 81, 73, 0.4);
   font-weight: 700;
-  border-radius: 2px;
-  padding: 1px 5px;
-  font-size: 9px;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
   letter-spacing: 0.04em;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .badge-warning {
-  background-color: #D29922;
-  color: #0d1117;
+  background-color: rgba(210, 153, 34, 0.15);
+  color: #D29922;
+  border: 1px solid rgba(210, 153, 34, 0.4);
   font-weight: 700;
-  border-radius: 2px;
-  padding: 1px 5px;
-  font-size: 9px;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
   letter-spacing: 0.04em;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .badge-secure {
-  background-color: #21262d;
+  background-color: rgba(63, 185, 80, 0.12);
   color: #3FB950;
+  border: 1px solid rgba(63, 185, 80, 0.35);
   font-weight: 600;
-  border-radius: 2px;
-  padding: 1px 5px;
-  font-size: 9px;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
   letter-spacing: 0.04em;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .badge-neutral {
-  background-color: #21262d;
-  color: #8b949e;
+  background-color: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #334155;
   font-weight: 600;
-  border-radius: 2px;
-  padding: 1px 5px;
-  font-size: 9px;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
   letter-spacing: 0.04em;
+  font-family: 'JetBrains Mono', monospace;
 }
 
-/* Custom thin scrollbar */
+/* Custom Range Slider styling */
+input[type="range"].custom-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  width: 100%;
+  height: 24px;
+}
+
+input[type="range"].custom-slider:focus {
+  outline: none;
+}
+
+input[type="range"].custom-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: #1f2937;
+  transition: background 0.15s ease;
+}
+
+input[type="range"].custom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #38bdf8;
+  border: 2px solid #0f172a;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+  margin-top: -6px;
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="range"].custom-slider:hover::-webkit-slider-thumb {
+  transform: scale(1.18);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.8);
+}
+
+input[type="range"].custom-slider:active::-webkit-slider-thumb {
+  transform: scale(1.28);
+}
+
+/* Firefox Slider */
+input[type="range"].custom-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: #1f2937;
+}
+
+input[type="range"].custom-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #38bdf8;
+  border: 2px solid #0f172a;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+}
+
+/* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0d1117;
+  background: #090b0e;
 }
 
 ::-webkit-scrollbar-thumb {
   background: #21262d;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
