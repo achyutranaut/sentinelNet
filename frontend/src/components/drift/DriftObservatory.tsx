@@ -69,22 +69,22 @@ export const DriftObservatory: React.FC<DriftObservatoryProps> = ({
       </div>
 
       {isOpen && (
-        <div className="p-3 space-y-3 font-mono">
+        <div className="p-3.5 space-y-4 font-mono">
           {/* KPI Metrics Row */}
-          <div className="grid grid-cols-4 gap-2">
-            <div className="bg-[#161b22] border border-[#21262d] rounded-[2px] p-2.5">
-              <div className="font-heading text-[9px] uppercase tracking-wider text-[#8b949e]">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-[#161b22] border border-[#21262d] rounded p-3">
+              <div className="font-heading text-xs uppercase tracking-wider text-[#8b949e] font-semibold">
                 Features Evaluated
               </div>
-              <div className="text-base font-bold text-[#e6edf3] mt-1">{totalFeatures}</div>
+              <div className="text-xl font-bold text-[#e6edf3] mt-1 tabular-nums">{totalFeatures}</div>
             </div>
 
-            <div className="bg-[#161b22] border border-[#21262d] rounded-[2px] p-2.5">
-              <div className="font-heading text-[9px] uppercase tracking-wider text-[#8b949e]">
+            <div className="bg-[#161b22] border border-[#21262d] rounded p-3">
+              <div className="font-heading text-xs uppercase tracking-wider text-[#8b949e] font-semibold">
                 Drifted Features
               </div>
               <div
-                className={`text-base font-bold mt-1 ${
+                className={`text-xl font-bold mt-1 tabular-nums ${
                   numDrifted > 0 ? 'text-[#F85149]' : 'text-[#3FB950]'
                 }`}
               >
@@ -92,21 +92,21 @@ export const DriftObservatory: React.FC<DriftObservatoryProps> = ({
               </div>
             </div>
 
-            <div className="bg-[#161b22] border border-[#21262d] rounded-[2px] p-2.5">
-              <div className="font-heading text-[9px] uppercase tracking-wider text-[#8b949e]">
+            <div className="bg-[#161b22] border border-[#21262d] rounded p-3">
+              <div className="font-heading text-xs uppercase tracking-wider text-[#8b949e] font-semibold">
                 Drift Feature Ratio
               </div>
               <div
-                className={`text-base font-bold mt-1 ${
-                  parseFloat(driftRatio) > 0.1 ? 'text-[#F85149]' : 'text-[#3FB950]'
+                className={`text-xl font-bold mt-1 tabular-nums ${
+                  parseFloat(driftRatio) > 10 ? 'text-[#F85149]' : 'text-[#3FB950]'
                 }`}
               >
                 {driftRatio}%
               </div>
             </div>
 
-            <div className="bg-[#161b22] border border-[#21262d] rounded-[2px] p-2.5">
-              <div className="font-heading text-[9px] uppercase tracking-wider text-[#8b949e]">
+            <div className="bg-[#161b22] border border-[#21262d] rounded p-3">
+              <div className="font-heading text-xs uppercase tracking-wider text-[#8b949e] font-semibold">
                 Retraining Trigger
               </div>
               <div
@@ -119,12 +119,12 @@ export const DriftObservatory: React.FC<DriftObservatoryProps> = ({
             </div>
           </div>
 
-          {/* Feature Distribution Matrix Grid */}
+          {/* Feature Distribution Matrix Grid - grid-cols-2 md:grid-cols-4 lg:grid-cols-6 */}
           <div>
-            <div className="font-heading text-[9.5px] font-bold text-[#8b949e] uppercase tracking-wider mb-1.5">
+            <div className="font-heading text-xs font-bold text-[#8b949e] uppercase tracking-wider mb-2">
               Feature Stability Matrix (30 Features)
             </div>
-            <div className="grid grid-cols-6 sm:grid-cols-10 gap-1 bg-[#090b0e] border border-[#21262d] rounded-[2px] p-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 bg-[#090b0e] border border-[#21262d] rounded p-3">
               {sortedFeatures.map((feat) => {
                 const isCrit = feat.severity.toLowerCase() === 'critical';
                 const isWarn = feat.severity.toLowerCase() === 'moderate';
@@ -132,18 +132,18 @@ export const DriftObservatory: React.FC<DriftObservatoryProps> = ({
                   ? 'bg-[#F85149] text-[#0d1117]'
                   : isWarn
                   ? 'bg-[#D29922] text-[#0d1117]'
-                  : 'bg-[#161b22] text-[#8b949e] border border-[#21262d]';
+                  : 'bg-[#161b22] text-[#e6edf3] border border-[#21262d]';
 
                 return (
                   <div
                     key={feat.feature_name}
                     title={`${feat.feature_name}\nPSI: ${feat.psi_score.toFixed(4)}\nKS: ${feat.ks_statistic.toFixed(4)} (p=${feat.ks_pvalue.toExponential(2)})\nSeverity: ${feat.severity.toUpperCase()}`}
-                    className={`h-7 px-1 rounded-[1px] flex flex-col justify-center items-center text-[8px] font-mono cursor-pointer transition-transform hover:scale-105 select-none ${cellBg}`}
+                    className={`h-9 px-2 rounded flex flex-col justify-center items-center text-xs font-mono tabular-nums cursor-pointer transition-transform hover:scale-105 select-none ${cellBg}`}
                   >
-                    <span className="truncate w-full text-center font-semibold">
-                      {feat.feature_name.slice(0, 7)}
+                    <span className="truncate w-full text-center font-medium">
+                      {feat.feature_name.slice(0, 10)}
                     </span>
-                    <span className="text-[7.5px] opacity-80">{feat.psi_score.toFixed(2)}</span>
+                    <span className="text-[11px] opacity-85 font-semibold">{feat.psi_score.toFixed(3)}</span>
                   </div>
                 );
               })}
@@ -152,19 +152,19 @@ export const DriftObservatory: React.FC<DriftObservatoryProps> = ({
 
           {/* Top Drifted Features Monospace Table */}
           <div>
-            <div className="font-heading text-[9.5px] font-bold text-[#8b949e] uppercase tracking-wider mb-1.5">
+            <div className="font-heading text-xs font-bold text-[#8b949e] uppercase tracking-wider mb-2">
               Top Drifted Features (Ranked by Population Stability Index)
             </div>
-            <div className="border border-[#21262d] rounded-[2px] overflow-hidden overflow-x-auto">
-              <table className="w-full border-collapse text-left font-mono text-[10px]">
-                <thead className="bg-[#161b22] text-[#8b949e] font-medium text-[9px] uppercase tracking-wider border-b border-[#21262d]">
+            <div className="border border-[#21262d] rounded overflow-hidden overflow-x-auto w-full">
+              <table className="w-full border-collapse text-left font-mono text-xs tabular-nums">
+                <thead className="bg-[#161b22] text-[#8b949e] font-semibold text-xs uppercase tracking-wider border-b border-[#21262d]">
                   <tr>
-                    <th className="py-1 px-3">FEATURE NAME</th>
-                    <th className="py-1 px-3">PSI SCORE</th>
-                    <th className="py-1 px-3">KS STATISTIC</th>
-                    <th className="py-1 px-3">KS P-VALUE</th>
-                    <th className="py-1 px-3">SEVERITY</th>
-                    <th className="py-1 px-3">DISTRIBUTION ACTION</th>
+                    <th className="py-2.5 px-3">FEATURE NAME</th>
+                    <th className="py-2.5 px-3">PSI SCORE</th>
+                    <th className="py-2.5 px-3">KS STATISTIC</th>
+                    <th className="py-2.5 px-3">KS P-VALUE</th>
+                    <th className="py-2.5 px-3">SEVERITY</th>
+                    <th className="py-2.5 px-3">DISTRIBUTION ACTION</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#161b22] bg-[#0d1117]">
@@ -173,12 +173,12 @@ export const DriftObservatory: React.FC<DriftObservatoryProps> = ({
                     const isWarn = feat.severity.toLowerCase() === 'moderate';
 
                     return (
-                      <tr key={feat.feature_name} className="hover:bg-[#161b22] whitespace-nowrap">
-                        <td className="py-1 px-3 text-[#e6edf3] font-medium">{feat.feature_name}</td>
-                        <td className="py-1 px-3 text-[#e6edf3]">{feat.psi_score.toFixed(4)}</td>
-                        <td className="py-1 px-3 text-[#e6edf3]">{feat.ks_statistic.toFixed(4)}</td>
-                        <td className="py-1 px-3 text-[#8b949e]">{feat.ks_pvalue.toExponential(2)}</td>
-                        <td className="py-1 px-3">
+                      <tr key={feat.feature_name} className="hover:bg-[#161b22] whitespace-nowrap transition-colors">
+                        <td className="py-2 px-3 text-[#e6edf3] font-medium">{feat.feature_name}</td>
+                        <td className="py-2 px-3 text-[#e6edf3] font-bold">{feat.psi_score.toFixed(4)}</td>
+                        <td className="py-2 px-3 text-[#e6edf3]">{feat.ks_statistic.toFixed(4)}</td>
+                        <td className="py-2 px-3 text-[#8b949e]">{feat.ks_pvalue.toExponential(2)}</td>
+                        <td className="py-2 px-3">
                           {isCrit ? (
                             <span className="badge-critical">CRITICAL</span>
                           ) : isWarn ? (
@@ -187,7 +187,7 @@ export const DriftObservatory: React.FC<DriftObservatoryProps> = ({
                             <span className="badge-secure">NOMINAL</span>
                           )}
                         </td>
-                        <td className="py-1 px-3 font-semibold">
+                        <td className="py-2 px-3 font-semibold">
                           {isCrit ? (
                             <span className="text-[#F85149]">TRIGGER CT PIPELINE</span>
                           ) : isWarn ? (

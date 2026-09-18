@@ -59,17 +59,17 @@ export const TreeShapInspector: React.FC<TreeShapInspectorProps> = ({
 
   return (
     <div
-      className="shap-inspector-panel bg-[#0d1117] border border-[#21262d] rounded-[2px] flex flex-col overflow-hidden"
-      style={{ height: `${height}px` }}
+      className="shap-inspector-panel bg-[#0d1117] border border-[#21262d] rounded-lg flex flex-col overflow-hidden flex-1"
+      style={height ? { minHeight: `${height}px` } : undefined}
     >
       {/* Panel Header */}
-      <div className="bg-[#161b22] border-b border-[#21262d] px-2.5 py-1.5 flex justify-between items-center font-heading text-[10px] font-bold tracking-wider uppercase text-[#8b949e] select-none">
+      <div className="bg-[#161b22] border-b border-[#21262d] px-3.5 py-2.5 flex justify-between items-center font-heading text-xs font-bold tracking-wider uppercase text-[#8b949e] select-none">
         <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-[1px] bg-[#3b82f6] inline-block" />
+          <span className="w-2 h-2 rounded-[2px] bg-[#38bdf8] inline-block shadow-[0_0_8px_#38bdf8]" />
           <span className="text-[#e6edf3]">COMPONENT 03 //</span>
-          <span>TREESHAP INCIDENT ATTRIBUTION INSPECTOR (TIER 5)</span>
+          <span>TREESHAP INCIDENT ATTRIBUTION (TIER 5)</span>
           {targetEntity && (
-            <span className="text-[#58a6ff] font-mono text-[9px] px-1.5 py-0.2 rounded-[2px] bg-[#162b47] border border-[#23426e] tracking-tight">
+            <span className="text-[#38bdf8] font-mono text-[11px] px-2 py-0.5 rounded bg-[#162b47] border border-[#23426e] tracking-tight font-semibold">
               {targetEntity}
             </span>
           )}
@@ -95,18 +95,26 @@ export const TreeShapInspector: React.FC<TreeShapInspectorProps> = ({
       </div>
 
       {/* SOC Analyst Brief Banner */}
-      <div className="bg-[#161b22] border-b border-[#21262d] border-l-2 border-l-[#3b82f6] px-2.5 py-1.5 font-mono text-[9.5px] text-[#c9d1d9] leading-tight">
-        <span className="font-heading font-bold text-[#3b82f6] tracking-wider uppercase mr-1">
+      <div className="bg-[#121924] border-b border-[#21262d] border-l-4 border-l-[#38bdf8] px-3.5 py-2.5 text-xs text-slate-200 leading-relaxed font-sans">
+        <span className="font-heading font-extrabold text-[#38bdf8] tracking-wider uppercase mr-2 text-xs">
           ANALYST BRIEF:
         </span>
-        <span className="analyst-brief-text">{analystText}</span>
+        <span className="analyst-brief-text font-mono text-xs">{analystText}</span>
+      </div>
+
+      {/* Table Column Headers */}
+      <div className="grid grid-cols-[1fr_80px_180px_80px] items-center gap-3 px-3.5 py-2 bg-[#0c121a] border-b border-[#1f2937] font-mono text-xs font-semibold text-slate-400 uppercase tracking-wider select-none">
+        <div className="text-left">Feature Name</div>
+        <div className="text-right">Raw Value</div>
+        <div className="text-center">Attribution (±SHAP)</div>
+        <div className="text-right">Impact</div>
       </div>
 
       {/* Waterfall Rows */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1 select-text">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2 select-text">
         {drivers.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-[#8b949e] font-mono text-xs gap-1.5">
-            <HelpCircle className="w-5 h-5 text-[#8b949e]" />
+          <div className="h-full flex flex-col items-center justify-center text-[#8b949e] font-mono text-xs gap-2">
+            <HelpCircle className="w-6 h-6 text-slate-500" />
             <span>Select any flow or incident to inspect exact TreeSHAP feature attributions.</span>
           </div>
         ) : (
@@ -120,42 +128,42 @@ export const TreeShapInspector: React.FC<TreeShapInspectorProps> = ({
             return (
               <div
                 key={`shap-${driver.feature}-${idx}`}
-                className="shap-row-animate grid grid-cols-[140px_60px_1fr_60px] items-center gap-2 px-2 py-1 bg-[#161b22] border border-[#21262d] rounded-[2px] font-mono text-[9.5px]"
+                className="shap-row-animate grid grid-cols-[1fr_80px_180px_80px] items-center gap-3 px-3 py-2.5 min-h-[42px] bg-[#161b22] hover:bg-[#1a2330] border border-[#233044] rounded-md font-mono text-xs tabular-nums transition-colors shadow-xs"
               >
                 {/* Feature Name */}
-                <div className="truncate text-[#e6edf3] font-medium" title={driver.feature}>
+                <div className="truncate text-slate-200 font-medium font-sans text-xs" title={driver.feature}>
                   {driver.feature}
                 </div>
 
-                {/* Feature Raw Value */}
-                <div className="text-right text-[#8b949e] text-[9px]">
-                  {driver.value.toFixed(2)}
+                {/* Feature Raw Value (Right-aligned, monospace) */}
+                <div className="text-right text-slate-400 font-mono text-xs font-semibold tabular-nums">
+                  {typeof driver.value === 'number' ? driver.value.toFixed(2) : driver.value}
                 </div>
 
-                {/* Diverging Waterfall Bar */}
-                <div className="relative h-3.5 bg-[#090b0e] rounded-[1px] flex items-center overflow-hidden">
+                {/* Diverging Waterfall Bar (Wide, distinct center baseline, h-5) */}
+                <div className="relative h-5 w-full bg-[#090e17] rounded border border-[#233044] flex items-center overflow-hidden">
                   {/* Center origin line */}
-                  <div className="absolute left-1/2 top-0 bottom-0 w-px bg-[#30363d] z-10" />
+                  <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-slate-500 z-10" />
 
                   {isThreat ? (
                     <div
-                      className="shap-bar-fill absolute left-1/2 h-full bg-[#F85149]"
+                      className="shap-bar-fill absolute left-1/2 h-full bg-[#f85149] rounded-r-xs shadow-[0_0_8px_rgba(248,81,73,0.4)]"
                       data-width={`${pctWidth}%`}
                       style={{ width: '0%' }}
                     />
                   ) : (
                     <div
-                      className="shap-bar-fill absolute right-1/2 h-full bg-[#3FB950]"
+                      className="shap-bar-fill absolute right-1/2 h-full bg-[#3fb950] rounded-l-xs shadow-[0_0_8px_rgba(63,185,80,0.4)]"
                       data-width={`${pctWidth}%`}
                       style={{ width: '0%' }}
                     />
                   )}
                 </div>
 
-                {/* Delta Sign */}
+                {/* Delta Sign (Right-aligned, monospace, colored) */}
                 <div
-                  className={`text-right font-semibold ${
-                    isThreat ? 'text-[#F85149]' : 'text-[#3FB950]'
+                  className={`text-right font-mono text-xs font-bold tabular-nums ${
+                    isThreat ? 'text-[#f85149]' : 'text-[#3fb950]'
                   }`}
                 >
                   {deltaSign}
@@ -167,17 +175,17 @@ export const TreeShapInspector: React.FC<TreeShapInspectorProps> = ({
       </div>
 
       {/* Axis Scale Legend */}
-      <div className="bg-[#161b22] border-t border-[#21262d] px-2.5 py-1 flex justify-between items-center font-mono text-[8px] text-[#8b949e] select-none">
-        <div className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-[1px] bg-[#3FB950]" />
-          <span>MITIGATING FEATURE (DECREASES RISK)</span>
+      <div className="bg-[#121822] border-t border-[#21262d] px-3.5 py-2 flex justify-between items-center font-mono text-xs text-slate-400 select-none">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-[#3fb950]" />
+          <span>MITIGATING (DECREASES RISK)</span>
         </div>
-        <div className="text-center font-bold text-[#e6edf3]">
-          DIVERGING ATTRIBUTION (±SHAP)
+        <div className="text-center font-bold text-slate-300">
+          CENTER ZERO BASELINE
         </div>
-        <div className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-[1px] bg-[#F85149]" />
-          <span>SUSPICIOUS DRIVER (INCREASES RISK)</span>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-[#f85149]" />
+          <span>SUSPICIOUS (INCREASES RISK)</span>
         </div>
       </div>
     </div>

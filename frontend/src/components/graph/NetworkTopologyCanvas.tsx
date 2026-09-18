@@ -156,11 +156,11 @@ export const NetworkTopologyCanvas: React.FC<NetworkTopologyCanvasProps> = ({
 
   return (
     <div
-      className="bg-[#0d1117] border border-[#21262d] rounded-[2px] flex flex-col relative overflow-hidden select-none"
-      style={{ height: `${height}px` }}
+      className="bg-[#0d1117] border border-[#21262d] rounded flex flex-col relative overflow-hidden select-none min-h-[540px] flex-1"
+      style={height ? { minHeight: `${height}px` } : undefined}
     >
       {/* Panel Header */}
-      <div className="bg-[#161b22] border-b border-[#21262d] px-2.5 py-1.5 flex justify-between items-center font-heading text-[10px] font-bold tracking-wider uppercase text-[#8b949e] select-none z-10">
+      <div className="bg-[#161b22] border-b border-[#21262d] px-3 py-2 flex justify-between items-center font-heading text-xs font-bold tracking-wider uppercase text-[#8b949e] select-none z-10">
         <div className="flex items-center gap-2">
           <span className="text-[#e6edf3]">COMPONENT 02 //</span>
           <span>TEMPORAL HOST INTERACTION TOPOLOGY & LATERAL PIVOT CANVAS</span>
@@ -170,22 +170,22 @@ export const NetworkTopologyCanvas: React.FC<NetworkTopologyCanvasProps> = ({
 
         <div className="flex items-center gap-3">
           {/* Legend */}
-          <div className="flex items-center gap-3 font-mono text-[9px]">
+          <div className="flex items-center gap-3 font-mono text-xs">
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-[1px] bg-[#F85149]" />
-              <span>PIVOT HOST</span>
+              <span className="w-2 h-2 rounded-full bg-[#F85149]" />
+              <span className="text-slate-300">PIVOT HOST</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-[1px] bg-[#58a6ff]" />
-              <span>INTERNAL</span>
+              <span className="w-2 h-2 rounded-full bg-[#58a6ff]" />
+              <span className="text-slate-300">INTERNAL</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-[1px] bg-[#8b5cf6]" />
-              <span>DMZ</span>
+              <span className="w-2 h-2 rounded-full bg-[#8b5cf6]" />
+              <span className="text-slate-300">DMZ</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-[1px] bg-[#3FB950]" />
-              <span>ENDPOINT</span>
+              <span className="w-2 h-2 rounded-full bg-[#3FB950]" />
+              <span className="text-slate-300">ENDPOINT</span>
             </div>
           </div>
 
@@ -193,44 +193,44 @@ export const NetworkTopologyCanvas: React.FC<NetworkTopologyCanvasProps> = ({
             <button
               onClick={onRefresh}
               disabled={isLoading}
-              className="p-1 text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#21262d] rounded-[2px] border border-[#30363d] cursor-pointer disabled:opacity-50"
+              className="p-1 text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#21262d] rounded border border-[#30363d] cursor-pointer disabled:opacity-50"
               title="Refresh topology state"
             >
-              <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
           )}
         </div>
       </div>
 
       {/* SVG Canvas Area with Pan & Zoom */}
-      <div className="flex-1 relative bg-[#090b0e] overflow-hidden select-none">
+      <div className="flex-1 relative bg-[#090b0e] overflow-hidden select-none min-h-[460px]">
         {/* Floating CyberWatch-style Zoom Controls */}
         <div className="absolute top-3 right-3 flex flex-col gap-1 z-20 font-mono">
           <button
             onClick={() => zoomBy(1.25)}
-            className="w-7 h-7 flex items-center justify-center bg-[#161b22]/90 hover:bg-[#21262d] border border-[#30363d] text-[#e6edf3] hover:text-[#58a6ff] hover:border-[#58a6ff]/50 rounded-[2px] cursor-pointer transition-colors text-xs"
+            className="w-8 h-8 flex items-center justify-center bg-[#161b22]/90 hover:bg-[#21262d] border border-[#30363d] text-[#e6edf3] hover:text-[#58a6ff] hover:border-[#58a6ff]/50 rounded cursor-pointer transition-colors text-xs"
             title="Zoom In (+)"
           >
-            <ZoomIn className="w-3.5 h-3.5" />
+            <ZoomIn className="w-4 h-4" />
           </button>
           <button
             onClick={() => zoomBy(0.8)}
-            className="w-7 h-7 flex items-center justify-center bg-[#161b22]/90 hover:bg-[#21262d] border border-[#30363d] text-[#e6edf3] hover:text-[#58a6ff] hover:border-[#58a6ff]/50 rounded-[2px] cursor-pointer transition-colors text-xs"
+            className="w-8 h-8 flex items-center justify-center bg-[#161b22]/90 hover:bg-[#21262d] border border-[#30363d] text-[#e6edf3] hover:text-[#58a6ff] hover:border-[#58a6ff]/50 rounded cursor-pointer transition-colors text-xs"
             title="Zoom Out (−)"
           >
-            <ZoomOut className="w-3.5 h-3.5" />
+            <ZoomOut className="w-4 h-4" />
           </button>
           <button
             onClick={zoomReset}
-            className="w-7 h-7 flex items-center justify-center bg-[#161b22]/90 hover:bg-[#21262d] border border-[#30363d] text-[#e6edf3] hover:text-[#58a6ff] hover:border-[#58a6ff]/50 rounded-[2px] cursor-pointer transition-colors text-xs"
+            className="w-8 h-8 flex items-center justify-center bg-[#161b22]/90 hover:bg-[#21262d] border border-[#30363d] text-[#e6edf3] hover:text-[#58a6ff] hover:border-[#58a6ff]/50 rounded cursor-pointer transition-colors text-xs"
             title="Reset View (⟲)"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-4 h-4" />
           </button>
         </div>
 
         {/* Bottom Interactive Hint Strip */}
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 font-mono text-[8px] text-[#527194] tracking-[0.16em] uppercase pointer-events-none whitespace-nowrap bg-[#060c14]/90 px-2.5 py-1 rounded-[2px] border border-[#162b47] z-10">
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 font-mono text-[11px] text-[#527194] tracking-[0.14em] uppercase pointer-events-none whitespace-nowrap bg-[#060c14]/90 px-3 py-1 rounded border border-[#162b47] z-10 shadow-sm">
           SCROLL TO ZOOM · DRAG TO PAN · CLICK A NODE TO INSPECT WITH TREESHAP
         </div>
 
@@ -400,12 +400,12 @@ export const NetworkTopologyCanvas: React.FC<NetworkTopologyCanvasProps> = ({
                       {(isPivot || node.role === 'INTERNAL_SERVER' || isSelected) && (
                         <text
                           x={node.x}
-                          y={node.y - baseRadius - 4}
+                          y={node.y - baseRadius - 5}
                           textAnchor="middle"
                           onClick={(e) => handleNodeClick(node, e)}
                           style={{ pointerEvents: 'all' }}
-                          className={`font-mono text-[8.5px] select-none cursor-pointer ${
-                            isPivot ? 'fill-[#F85149] font-bold' : isSelected ? 'fill-[#58a6ff] font-bold' : 'fill-[#8b949e]'
+                          className={`font-mono text-xs select-none cursor-pointer ${
+                            isPivot ? 'fill-[#F85149] font-bold' : isSelected ? 'fill-[#58a6ff] font-bold' : 'fill-slate-300'
                           }`}
                         >
                           {isPivot ? `[PIVOT] ${node.id}` : node.id}
@@ -421,53 +421,100 @@ export const NetworkTopologyCanvas: React.FC<NetworkTopologyCanvasProps> = ({
 
         {/* Telemetry Overlay Popover for selected host */}
         {activeNode && (
-          <div className="absolute bottom-10 right-3 bg-[#161b22] border border-[#21262d] rounded-[2px] p-2.5 max-w-[260px] font-mono text-[10px] z-20 shadow-lg">
-            <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#21262d]">
-              <span
-                className={`font-heading font-bold text-[10px] uppercase ${
-                  activeNode.is_pivot ? 'text-[#F85149]' : 'text-[#3FB950]'
-                }`}
-              >
-                {activeNode.is_pivot ? 'ALERT: LATERAL PIVOT HOST' : `HOST: ${activeNode.role}`}
-              </span>
+          <div className="absolute bottom-12 right-4 bg-[#0e1623]/95 backdrop-blur-md border border-[#233348] rounded-lg p-4 w-84 font-sans shadow-2xl z-20 select-text">
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#233348]">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    activeNode.is_pivot
+                      ? 'bg-[#f85149] shadow-[0_0_10px_#f85149]'
+                      : 'bg-[#3fb950] shadow-[0_0_10px_#3fb950]'
+                  }`}
+                />
+                <span
+                  className={`font-heading font-extrabold text-xs uppercase tracking-wider ${
+                    activeNode.is_pivot ? 'text-[#f85149]' : 'text-[#3fb950]'
+                  }`}
+                >
+                  {activeNode.is_pivot ? 'ALERT: LATERAL PIVOT HOST' : `HOST: ${activeNode.role}`}
+                </span>
+              </div>
               <button
                 onClick={() => setSelectedNode(null)}
-                className="text-[#8b949e] hover:text-[#e6edf3] p-0.5 cursor-pointer"
+                className="text-slate-400 hover:text-slate-100 p-1 rounded hover:bg-slate-800/60 cursor-pointer transition-colors"
+                title="Close overlay"
               >
-                <X className="w-3 h-3" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-1 text-[#e6edf3]">
-              <div>
-                <span className="text-[#8b949e]">IP:</span> <strong className="text-[#e6edf3]">{activeNode.id}</strong>
+            {/* Key-Value Metrics List with clear vertical rhythm */}
+            <div className="space-y-2.5 text-xs">
+              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400 font-semibold uppercase tracking-wider text-xs">
+                  IP Address:
+                </span>
+                <span className="font-mono font-bold text-slate-100 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700/60 tabular-nums">
+                  {activeNode.id}
+                </span>
               </div>
-              <div>
-                <span className="text-[#8b949e]">Out-Degree:</span> {activeNode.out_degree} (In: {activeNode.in_degree})
+
+              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400 font-semibold uppercase tracking-wider text-xs">
+                  Out-Degree:
+                </span>
+                <span className="font-mono font-semibold text-slate-200 tabular-nums">
+                  {activeNode.out_degree}{' '}
+                  <span className="text-slate-400 text-xs font-normal">(In: {activeNode.in_degree})</span>
+                </span>
               </div>
-              <div>
-                <span className="text-[#8b949e]">Degree Z-Score:</span>{' '}
-                <span className={activeNode.degree_zscore > 2.0 ? 'text-[#F85149] font-bold' : 'text-[#e6edf3]'}>
+
+              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400 font-semibold uppercase tracking-wider text-xs">
+                  Degree Z-Score:
+                </span>
+                <span
+                  className={`font-mono font-bold tabular-nums ${
+                    activeNode.degree_zscore > 2.0 ? 'text-[#f85149]' : 'text-slate-200'
+                  }`}
+                >
                   +{activeNode.degree_zscore.toFixed(2)}σ
                 </span>
               </div>
-              <div>
-                <span className="text-[#8b949e]">Jaccard Novelty:</span>{' '}
-                <span className={activeNode.jaccard_novelty > 0.4 ? 'text-[#F85149] font-bold' : 'text-[#e6edf3]'}>
-                  {(activeNode.jaccard_novelty * 100).toFixed(0)}%
+
+              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400 font-semibold uppercase tracking-wider text-xs">
+                  Jaccard Novelty:
+                </span>
+                <span
+                  className={`font-mono font-bold tabular-nums ${
+                    activeNode.jaccard_novelty > 0.4 ? 'text-[#f85149]' : 'text-slate-200'
+                  }`}
+                >
+                  {(activeNode.jaccard_novelty * 100).toFixed(1)}%
                 </span>
               </div>
-              <div>
-                <span className="text-[#8b949e]">PageRank Shift:</span>{' '}
-                <span className="text-[#3b82f6]">+{activeNode.pagerank_delta.toFixed(4)}</span>
+
+              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400 font-semibold uppercase tracking-wider text-xs">
+                  PageRank Shift:
+                </span>
+                <span className="font-mono font-bold text-[#38bdf8] tabular-nums">
+                  +{activeNode.pagerank_delta.toFixed(4)}
+                </span>
               </div>
 
               {activeNode.reasons && activeNode.reasons.length > 0 && (
-                <div className="pt-1 border-t border-[#21262d] mt-1 text-[9px] text-[#F85149]">
-                  <strong>PIVOT FLAGS:</strong>
-                  <ul className="list-disc list-inside mt-0.5">
+                <div className="mt-3 pt-2.5 border-t border-red-900/40 bg-red-950/25 p-2.5 rounded-md text-xs">
+                  <span className="font-bold text-[#f85149] uppercase tracking-wider block mb-1.5 text-xs">
+                    PIVOT DETECTION FLAGS:
+                  </span>
+                  <ul className="space-y-1 text-red-300 font-mono text-xs">
                     {activeNode.reasons.map((r: string, i: number) => (
-                      <li key={i}>{r}</li>
+                      <li key={i} className="flex items-start gap-1.5">
+                        <span className="text-red-500 font-bold">•</span>
+                        <span>{r}</span>
+                      </li>
                     ))}
                   </ul>
                 </div>

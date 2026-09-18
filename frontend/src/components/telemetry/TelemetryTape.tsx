@@ -25,49 +25,49 @@ export const TelemetryTape: React.FC<TelemetryTapeProps> = ({
   const driftRatio = drift ? `${(drift.drift_feature_ratio * 100).toFixed(1)}%` : '0.0%';
 
   return (
-    <div className="h-9 shrink-0 min-h-[36px] w-full bg-[#0d1117] border border-[#21262d] rounded-[2px] px-3 flex items-center justify-between font-mono text-[10px] tracking-wide whitespace-nowrap overflow-x-auto shadow-none select-none">
+    <div className="h-9 shrink-0 min-h-[36px] w-full bg-[#0d1117] border border-[#21262d] rounded px-3 flex items-center justify-between font-mono text-xs tabular-nums tracking-wide whitespace-nowrap overflow-x-auto select-none">
       <div className="flex items-center gap-4">
         {/* System Node */}
         <div className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-[1px] bg-[#3FB950] inline-block animate-pulse" />
-          <span className="font-heading font-bold text-[#8b949e] uppercase">SYSTEM:</span>
-          <span className="text-[#e6edf3] font-medium">SENTINELNET AIR-GAPPED SOC</span>
+          <span className="w-2 h-2 rounded-full bg-[#3FB950] inline-block animate-pulse" />
+          <span className="font-heading font-bold text-[#8b949e] uppercase text-xs">SYSTEM:</span>
+          <span className="text-[#e6edf3] font-medium text-xs">SENTINEL.NET SOC</span>
         </div>
 
         <span className="text-[#30363d]">|</span>
 
         {/* Model & Lineage */}
         <div className="flex items-center gap-1.5">
-          <span className="font-heading font-bold text-[#8b949e] uppercase">MODEL:</span>
-          <span className="text-[#e6edf3] font-semibold">{modelId.slice(0, 18)}...</span>
-          <span className="text-[#8b949e]">(SHA: <code className="text-[#e6edf3]">{sha}</code>)</span>
+          <span className="font-heading font-bold text-[#8b949e] uppercase text-xs">MODEL:</span>
+          <span className="text-[#e6edf3] font-semibold text-xs">{modelId.slice(0, 18)}</span>
+          <span className="text-[#8b949e] text-xs">(SHA: <code className="text-[#e6edf3]">{sha}</code>)</span>
         </div>
 
         <span className="text-[#30363d]">|</span>
 
         {/* SLA Latency */}
         <div className="flex items-center gap-1.5">
-          <span className="font-heading font-bold text-[#8b949e] uppercase">INFERENCE SLA:</span>
-          <span className={isSlaCompliant ? 'text-[#3FB950] font-semibold' : 'text-[#F85149] font-bold'}>
-            {p95Latency.toFixed(3)} ms (p95)
+          <span className="font-heading font-bold text-[#8b949e] uppercase text-xs">INFERENCE SLA:</span>
+          <span className={isSlaCompliant ? 'text-[#3FB950] font-semibold text-xs' : 'text-[#F85149] font-bold text-xs'}>
+            {p95Latency.toFixed(2)} ms (p95)
           </span>
-          <span className="text-[#8b949e]">{'[< 1.5ms]'}</span>
+          <span className="text-[#8b949e] text-xs">{'[< 1.5ms]'}</span>
         </div>
 
         <span className="text-[#30363d]">|</span>
 
         {/* Cost Calibrated Threshold */}
         <div className="flex items-center gap-1.5">
-          <span className="font-heading font-bold text-[#8b949e] uppercase">CALIBRATED THRESH:</span>
-          <span className="text-[#D29922] font-semibold">{costThreshold.toFixed(2)} ($50k FN)</span>
+          <span className="font-heading font-bold text-[#8b949e] uppercase text-xs">CALIBRATED THRESH:</span>
+          <span className="text-[#D29922] font-semibold text-xs">{costThreshold.toFixed(2)} ($50k FN)</span>
         </div>
 
         <span className="text-[#30363d]">|</span>
 
         {/* Drift Observatory */}
         <div className="flex items-center gap-1.5">
-          <span className="font-heading font-bold text-[#8b949e] uppercase">DRIFT:</span>
-          <span className={isDrifted ? 'text-[#F85149] font-bold' : 'text-[#3FB950] font-semibold'}>
+          <span className="font-heading font-bold text-[#8b949e] uppercase text-xs">DRIFT:</span>
+          <span className={isDrifted ? 'text-[#F85149] font-bold text-xs' : 'text-[#3FB950] font-semibold text-xs'}>
             {isDrifted ? `ALERT (${driftRatio})` : `NOMINAL (${driftRatio})`}
           </span>
         </div>
@@ -77,20 +77,20 @@ export const TelemetryTape: React.FC<TelemetryTapeProps> = ({
         {/* Stream Status */}
         <div className="flex items-center gap-1.5">
           <span
-            className={`w-1.5 h-1.5 rounded-[1px] ${
+            className={`w-2 h-2 rounded-full ${
               wsStatus === 'connected'
-                ? 'bg-[#3FB950]'
+                ? 'bg-[#3FB950] animate-pulse'
                 : wsStatus === 'connecting'
                 ? 'bg-[#D29922]'
                 : 'bg-[#F85149]'
             }`}
           />
-          <span className="font-heading text-[9px] uppercase tracking-wider text-[#8b949e]">
-            STREAM: <span className="text-[#e6edf3] font-mono">{wsStatus.toUpperCase()}</span>
+          <span className="font-heading text-xs uppercase tracking-wider text-[#8b949e]">
+            STREAM: <span className="text-[#e6edf3] font-mono text-xs">{wsStatus.toUpperCase()}</span>
           </span>
         </div>
 
-        <span className="text-[#3FB950] font-bold text-[9.5px] tracking-wider">[ARMED & ACTIVE]</span>
+        <span className="text-[#3FB950] font-bold text-xs tracking-wider">[ARMED & ACTIVE]</span>
       </div>
     </div>
   );

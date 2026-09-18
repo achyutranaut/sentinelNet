@@ -194,35 +194,35 @@ export const DriftView: React.FC<DriftViewProps> = ({
           </div>
         </div>
 
-        {/* Readable Card Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2.5 pt-2">
+        {/* Readable Card Grid - grid-cols-2 md:grid-cols-4 lg:grid-cols-6 */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 pt-2">
           {featureDetails.slice(0, 30).map((feat) => {
             const isCrit = feat.severity.toLowerCase() === 'critical';
             const isWarn = feat.severity.toLowerCase() === 'moderate';
 
             const borderCol = isCrit
-              ? 'border-red-800/40 bg-red-950/20'
+              ? 'border-red-800/50 bg-red-950/30'
               : isWarn
-              ? 'border-amber-800/40 bg-amber-950/20'
-              : 'border-slate-800 bg-slate-900/40';
+              ? 'border-amber-800/50 bg-amber-950/30'
+              : 'border-slate-800 bg-slate-900/60';
 
             const dotCol = isCrit ? '#f85149' : isWarn ? '#d29922' : '#3fb950';
 
             return (
               <div
                 key={feat.feature_name}
-                className={`p-3 rounded border ${borderCol} flex flex-col justify-between transition-colors hover:border-slate-600`}
+                className={`p-3.5 rounded-lg border ${borderCol} flex flex-col justify-between transition-all hover:border-slate-600 shadow-xs`}
                 title={`${feat.feature_name} | PSI: ${feat.psi_score.toFixed(4)} | KS: ${feat.ks_statistic.toFixed(4)}`}
               >
-                <div className="flex items-start justify-between gap-1">
-                  <span className="text-xs font-medium text-slate-300 font-sans truncate" title={feat.feature_name}>
+                <div className="flex items-start justify-between gap-1.5">
+                  <span className="text-xs font-semibold text-slate-200 font-sans truncate" title={feat.feature_name}>
                     {feat.feature_name}
                   </span>
-                  <span className="w-2 h-2 rounded-full mt-1 shrink-0" style={{ backgroundColor: dotCol }} />
+                  <span className="w-2.5 h-2.5 rounded-full mt-0.5 shrink-0" style={{ backgroundColor: dotCol }} />
                 </div>
-                <div className="mt-2 flex items-baseline justify-between">
-                  <span className="text-[11px] text-slate-500 uppercase font-sans font-semibold">PSI</span>
-                  <span className="font-mono text-sm font-bold text-slate-100">
+                <div className="mt-2.5 flex items-baseline justify-between border-t border-slate-800/60 pt-1.5">
+                  <span className="text-[11px] text-slate-400 uppercase font-sans font-semibold">PSI</span>
+                  <span className="font-mono text-sm font-bold tabular-nums text-slate-100">
                     {feat.psi_score.toFixed(3)}
                   </span>
                 </div>
@@ -232,8 +232,8 @@ export const DriftView: React.FC<DriftViewProps> = ({
         </div>
       </div>
 
-      {/* Real Readable, Sortable & Filterable Drifted Features Table */}
-      <div className="soc-card p-5 space-y-4">
+      {/* Real Readable, Sortable & Filterable Drifted Features Table (100% Width & Proportional Columns) */}
+      <div className="soc-card p-5 space-y-4 w-full">
         {/* Table Search & Filter Bar */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
@@ -278,9 +278,17 @@ export const DriftView: React.FC<DriftViewProps> = ({
           </div>
         </div>
 
-        {/* Table View with Real 13–14px Typography */}
-        <div className="overflow-x-auto border border-slate-800 rounded">
-          <table className="w-full text-left font-sans text-xs border-collapse">
+        {/* 100% Full-Width Proportional Distribution Table */}
+        <div className="w-full overflow-x-auto border border-slate-800 rounded-lg shadow-xs">
+          <table className="w-full text-left font-sans text-xs border-collapse table-fixed">
+            <colgroup>
+              <col className="w-[26%]" />
+              <col className="w-[14%]" />
+              <col className="w-[14%]" />
+              <col className="w-[14%]" />
+              <col className="w-[16%]" />
+              <col className="w-[16%]" />
+            </colgroup>
             <thead className="bg-[#161b22] text-slate-300 font-semibold uppercase tracking-wider border-b border-slate-800">
               <tr>
                 <th
@@ -315,7 +323,7 @@ export const DriftView: React.FC<DriftViewProps> = ({
                 <th className="py-3 px-4">Distribution Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 font-mono">
+            <tbody className="divide-y divide-slate-800/60 font-mono text-xs tabular-nums">
               {filteredFeatures.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-slate-500 font-sans">
@@ -329,19 +337,19 @@ export const DriftView: React.FC<DriftViewProps> = ({
 
                   return (
                     <tr key={feat.feature_name} className="hover:bg-slate-900/60 transition-colors">
-                      <td className="py-2.5 px-4 font-sans font-medium text-slate-200">
+                      <td className="py-3 px-4 font-sans font-medium text-slate-200 truncate" title={feat.feature_name}>
                         {feat.feature_name}
                       </td>
-                      <td className="py-2.5 px-4 font-bold text-slate-100">
+                      <td className="py-3 px-4 font-bold text-slate-100">
                         {feat.psi_score.toFixed(4)}
                       </td>
-                      <td className="py-2.5 px-4 text-slate-300">
+                      <td className="py-3 px-4 text-slate-300">
                         {feat.ks_statistic.toFixed(4)}
                       </td>
-                      <td className="py-2.5 px-4 text-slate-400">
+                      <td className="py-3 px-4 text-slate-400">
                         {feat.ks_pvalue.toExponential(2)}
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-3 px-4">
                         <span
                           className={
                             isCrit
@@ -354,9 +362,12 @@ export const DriftView: React.FC<DriftViewProps> = ({
                           {feat.severity.toUpperCase()}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4 font-sans text-xs">
+                      <td className="py-3 px-4 font-sans text-xs">
                         {isCrit ? (
-                          <span className="text-red-400 font-semibold">Trigger CT Pipeline</span>
+                          <span className="text-red-400 font-semibold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                            <span>Trigger CT Pipeline</span>
+                          </span>
                         ) : isWarn ? (
                           <span className="text-amber-400">Continuous Monitor</span>
                         ) : (

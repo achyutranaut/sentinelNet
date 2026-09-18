@@ -17,7 +17,6 @@ import type {
 } from '@/lib/types';
 import { ScoreboardHeader, type AppRoute } from '@/components/scoreboard/ScoreboardHeader';
 import { HeroLanding } from '@/components/hero/HeroLanding';
-import { TelemetryTape } from '@/components/telemetry/TelemetryTape';
 import { OperationalSidebar } from '@/components/controls/OperationalSidebar';
 import { OverviewView } from '@/views/OverviewView';
 import { TopologyView } from '@/views/TopologyView';
@@ -42,7 +41,7 @@ export const App: React.FC = () => {
     return '/overview';
   });
   const [showHero, setShowHero] = useState<boolean>(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
 
   // Shared Application State for Alerts & Cross-Panel Triage
   const [alerts, setAlerts] = useState<AlertStreamItem[]>([]);
@@ -326,7 +325,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#090b0e] text-[#e6edf3]">
-      {/* 1. Persistent Top Scoreboard Header (CyberWatch Reference Pattern) with Route Navigation */}
+      {/* 1. Persistent Top Scoreboard Header with Merged Telemetry & Route Navigation (<85px) */}
       <ScoreboardHeader
         criticalCount={criticalCount}
         anomalyCount={anomalyCount}
@@ -338,6 +337,11 @@ export const App: React.FC = () => {
         onToggleHero={() => setShowHero(!showHero)}
         activeRoute={activeRoute}
         onRouteChange={handleNavigate}
+        health={health}
+        metrics={metrics}
+        wsStatus={wsStatus}
+        isSidebarOpen={!isSidebarCollapsed}
+        onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
 
       {/* 2. Hero Landing Context Section */}
@@ -356,43 +360,20 @@ export const App: React.FC = () => {
 
       {/* Main Operational Container */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Operational Sidebar Controls */}
-        {isSidebarOpen && (
-          <OperationalSidebar
-            costThreshold={costThreshold}
-            onCostThresholdChange={setCostThreshold}
-            aeCutoff={aeCutoff}
-            onAeCutoffChange={setAeCutoff}
-            onBatchScored={handleBatchScored}
-            onRefreshGraph={refreshGraph}
-          />
-        )}
+        {/* Collapsible Operational Rail (w-14 compact <-> w-56 expanded) */}
+        <OperationalSidebar
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          costThreshold={costThreshold}
+          onCostThresholdChange={setCostThreshold}
+          aeCutoff={aeCutoff}
+          onAeCutoffChange={setAeCutoff}
+          onBatchScored={handleBatchScored}
+          onRefreshGraph={refreshGraph}
+        />
 
         {/* Center Operational Workspace */}
-        <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#090b0e] p-4 lg:p-6">
-          {/* Top Operational Telemetry Ribbon with Sidebar Toggle */}
-          <div className="mb-4 shrink-0 flex items-center gap-3">
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              title={isSidebarOpen ? 'Collapse Controls Sidebar' : 'Expand Controls Sidebar'}
-              className="px-2.5 py-1.5 rounded bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-xs font-mono text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 shrink-0 shadow-sm cursor-pointer"
-            >
-              <span className="text-[#38bdf8] font-bold">{isSidebarOpen ? '◀' : '▶'}</span>
-              <span className="hidden sm:inline tracking-wider font-semibold">
-                {isSidebarOpen ? 'COLLAPSE CONTROLS' : 'OPERATIONAL CONTROLS'}
-              </span>
-            </button>
-            <div className="flex-1 min-w-0">
-              <TelemetryTape
-                health={health}
-                metrics={metrics}
-                drift={drift}
-                wsStatus={wsStatus}
-                costThreshold={costThreshold}
-              />
-            </div>
-          </div>
-
+        <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#090b0e] p-4">
           {/* Dedicated Route View */}
           <div className="flex-1 min-h-0">
             {activeRoute === '/overview' && (

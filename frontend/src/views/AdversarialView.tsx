@@ -128,34 +128,34 @@ export const AdversarialView: React.FC<AdversarialViewProps> = ({
   const dComb = curvePoints.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${mapX(pt.eps)} ${mapY(pt.comb)}`).join(' ');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 flex flex-col h-full">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#0d1117] border border-[#1f2937] p-5 rounded-lg shadow-sm">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-[#0d1117] border border-[#1f2937] p-4 rounded-lg shadow-sm shrink-0">
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2 font-heading">
             <Zap className="w-5 h-5 text-amber-400" />
             <span>Adversarial Evasion & Stress-Testing Laboratory</span>
           </h1>
-          <p className="text-xs text-slate-400 font-sans mt-1">
+          <p className="text-xs text-slate-400 font-sans mt-0.5">
             Tier 4 Fast Gradient Sign Method (FGSM) evaluating detection recall degradation under $L_\infty$ adversarial feature perturbation
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-slate-900 border border-slate-700/80 px-3.5 py-1.5 rounded font-mono text-xs">
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 bg-slate-900 border border-slate-700/80 px-3.5 py-1.5 rounded font-mono text-xs tabular-nums">
             <span className="text-slate-400">Current Budget (ε):</span>
-            <strong className="text-amber-400 text-sm font-bold">{currentEpsilon.toFixed(2)}</strong>
+            <strong className="text-amber-400 text-sm font-bold tabular-nums">{currentEpsilon.toFixed(2)}</strong>
             {isLoading && <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping ml-1" />}
           </div>
         </div>
       </div>
 
-      {/* Main Interactive Laboratory Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column (8 cols): Scaled Up Evasion Curve Chart */}
-        <div className="lg:col-span-8 flex flex-col gap-4">
-          <div className="soc-card p-5 flex flex-col">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-slate-800">
+      {/* Main Interactive Laboratory Layout - Widescreen Optimized Grid Split */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 xl:grid-cols-[1fr_360px] 2xl:grid-cols-[1fr_380px] gap-4 flex-1 min-h-0">
+        {/* Left Column: Dynamically Expanded Evasion Curve Chart */}
+        <div className="lg:col-span-8 xl:col-span-1 flex flex-col h-full">
+          <div className="soc-card p-4 flex-1 flex flex-col h-full min-h-[500px]">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-800 shrink-0">
               <div>
                 <h2 className="text-sm font-bold text-slate-200 font-sans">
                   Adversarial Recall Degradation Curve
@@ -182,16 +182,16 @@ export const AdversarialView: React.FC<AdversarialViewProps> = ({
               </div>
             </div>
 
-            {/* Scaled-up SVG Chart Area */}
-            <div className="py-4 w-full h-[460px] flex items-center justify-center">
-              <svg viewBox="0 0 700 400" className="w-full h-full select-none">
+            {/* Dynamically Expanded SVG Chart Canvas Area */}
+            <div className="flex-1 flex flex-col min-h-0 py-2 relative">
+              <svg viewBox="0 0 700 400" className="w-full h-full min-h-[340px] select-none" preserveAspectRatio="xMidYMid meet">
                 {/* Horizontal Gridlines */}
                 {[0.0, 0.25, 0.5, 0.75, 1.0].map((val) => {
                   const y = mapY(val);
                   return (
                     <g key={`grid-y-${val}`}>
                       <line x1="70" y1={y} x2="660" y2={y} stroke="#1e293b" strokeWidth="1" strokeDasharray="4 4" />
-                      <text x="60" y={y + 4} className="fill-slate-500 font-mono text-[11px]" textAnchor="end">
+                      <text x="60" y={y + 4} className="fill-slate-400 font-mono text-xs tabular-nums" textAnchor="end">
                         {(val * 100).toFixed(0)}%
                       </text>
                     </g>
@@ -204,7 +204,7 @@ export const AdversarialView: React.FC<AdversarialViewProps> = ({
                   return (
                     <g key={`grid-x-${eps}`}>
                       <line x1={x} y1="40" x2={x} y2="340" stroke="#1e293b" strokeWidth="1" strokeDasharray="4 4" />
-                      <text x={x} y="360" className="fill-slate-500 font-mono text-[11px]" textAnchor="middle">
+                      <text x={x} y="360" className="fill-slate-400 font-mono text-xs tabular-nums" textAnchor="middle">
                         {eps.toFixed(2)}
                       </text>
                     </g>
@@ -252,8 +252,8 @@ export const AdversarialView: React.FC<AdversarialViewProps> = ({
               </svg>
             </div>
 
-            {/* Custom Range Slider Control Container */}
-            <div className="mt-2 pt-4 border-t border-slate-800">
+            {/* Integrated Perturbation Budget Slider Control Bar directly anchored beneath the chart axis */}
+            <div className="shrink-0 pt-2 pb-1 border-t border-slate-800/80 bg-slate-900/40 -mx-4 -mb-4 px-4 py-3 rounded-b-md">
               <CustomSlider
                 label="Interactive Perturbation Budget (ε)"
                 sublabel="Adjust adversarial perturbation magnitude to evaluate multi-tier resilience against evasion"
@@ -268,70 +268,70 @@ export const AdversarialView: React.FC<AdversarialViewProps> = ({
           </div>
         </div>
 
-        {/* Right Column (4 cols): Detailed Recall Metric Cards & Architectural Rationale */}
-        <div className="lg:col-span-4 flex flex-col gap-4">
+        {/* Right Column: Recall Metric Cards & Arbitration Rationale */}
+        <div className="lg:col-span-4 xl:col-span-1 flex flex-col gap-4">
           {/* Active Test Score Card */}
-          <div className="soc-card p-5 space-y-4">
+          <div className="soc-card p-4 space-y-3.5">
             <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-heading">
               Active Recall at ε = {currentEpsilon.toFixed(2)}
             </h3>
 
             {/* Combined Recall Card */}
-            <div className="p-3.5 rounded-lg bg-emerald-950/30 border border-emerald-800/40 flex justify-between items-center">
+            <div className="p-3 rounded-lg bg-emerald-950/30 border border-emerald-800/40 flex justify-between items-center">
               <div>
                 <span className="text-xs font-semibold text-emerald-400 block font-sans">
                   Multi-Tier Combined Defense
                 </span>
-                <span className="text-[11px] text-slate-400 font-sans">
+                <span className="text-xs text-slate-400 font-sans">
                   Resilient defense arbitration
                 </span>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-extrabold font-mono text-emerald-400">
+                <span className="text-2xl font-extrabold font-mono tabular-nums text-emerald-400">
                   {(activeComb * 100).toFixed(1)}%
                 </span>
-                <span className="block text-[10px] text-emerald-300 font-mono font-semibold">
+                <span className="block text-xs text-emerald-300 font-mono tabular-nums font-semibold">
                   +{( (activeComb - activeSup) * 100).toFixed(0)}% over signature
                 </span>
               </div>
             </div>
 
             {/* Autoencoder Recall Card */}
-            <div className="p-3.5 rounded-lg bg-sky-950/30 border border-sky-800/40 flex justify-between items-center">
+            <div className="p-3 rounded-lg bg-sky-950/30 border border-sky-800/40 flex justify-between items-center">
               <div>
                 <span className="text-xs font-semibold text-sky-400 block font-sans">
                   Tier 2 Autoencoder (Unsupervised)
                 </span>
-                <span className="text-[11px] text-slate-400 font-sans">
+                <span className="text-xs text-slate-400 font-sans">
                   Reconstruction anomaly cutoff
                 </span>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-extrabold font-mono text-sky-400">
+                <span className="text-2xl font-extrabold font-mono tabular-nums text-sky-400">
                   {(activeAe * 100).toFixed(1)}%
                 </span>
-                <span className="block text-[10px] text-slate-400 font-mono">
+                <span className="block text-xs text-slate-400 font-mono tabular-nums">
                   Stable out-of-distribution
                 </span>
               </div>
             </div>
 
             {/* Supervised Recall Card */}
-            <div className="p-3.5 rounded-lg bg-red-950/30 border border-red-800/40 flex justify-between items-center">
+            <div className="p-3 rounded-lg bg-red-950/30 border border-red-800/40 flex justify-between items-center">
               <div>
                 <span className="text-xs font-semibold text-red-400 block font-sans">
                   Tier 1 LightGBM (Supervised)
                 </span>
-                <span className="text-[11px] text-slate-400 font-sans">
+                <span className="text-xs text-slate-400 font-sans">
                   Steep decay under gradient shift
                 </span>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-extrabold font-mono text-red-400">
+                <span className="text-2xl font-extrabold font-mono tabular-nums text-red-400">
                   {(activeSup * 100).toFixed(1)}%
                 </span>
-                <span className="block text-[10px] text-red-400 font-mono flex items-center justify-end gap-1">
-                  <TrendingDown className="w-3 h-3" />
+                <span className="block text-xs text-red-400 font-mono tabular-nums flex items-center justify-end gap-1">
+                  <TrendingDown className="w-3.5 h-3.5" />
                   <span>Degraded</span>
                 </span>
               </div>
@@ -339,7 +339,7 @@ export const AdversarialView: React.FC<AdversarialViewProps> = ({
           </div>
 
           {/* Defense Theorem Explanation Card */}
-          <div className="soc-card p-5 space-y-3">
+          <div className="soc-card p-4 space-y-2.5 flex-1 flex flex-col justify-start">
             <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-heading flex items-center gap-1.5">
               <Info className="w-4 h-4 text-sky-400" />
               <span>Multi-Tier Arbitration Rationale</span>
