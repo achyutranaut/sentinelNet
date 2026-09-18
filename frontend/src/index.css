@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+@theme {
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-heading: 'Space Grotesk', sans-serif;
+
+  --color-background: #090b0e;
+  --color-surface: #0d1117;
+  --color-surface-elevated: #161b22;
+  --color-border: #21262d;
+  --color-border-subtle: #30363d;
+  --color-foreground: #e6edf3;
+  --color-muted: #8b949e;
+
+  /* Strict Severity Palette Only */
+  --color-critical: #F85149;
+  --color-warning: #D29922;
+  --color-secure: #3FB950;
+
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background-color: #090b0e;
+  color: #e6edf3;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #090b0e;
+  width: 100%;
+}
+
+/* Headers strictly Space Grotesk */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #e6edf3;
+}
+
+/* Tables and data values strictly IBM Plex Mono */
+code, pre, table, input, select, button {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* Flat panels: 2px radius, 1px border, zero shadow */
+.soc-panel {
+  background-color: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 2px;
+  box-shadow: none !important;
+}
+
+.soc-header {
+  background-color: #161b22;
+  border-bottom: 1px solid #21262d;
+  padding: 6px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8b949e;
+}
+
+/* Severity Badges */
+.badge-critical {
+  background-color: #F85149;
+  color: #0d1117;
+  font-weight: 700;
+  border-radius: 2px;
+  padding: 1px 5px;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.badge-warning {
+  background-color: #D29922;
+  color: #0d1117;
+  font-weight: 700;
+  border-radius: 2px;
+  padding: 1px 5px;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.badge-secure {
+  background-color: #21262d;
+  color: #3FB950;
+  font-weight: 600;
+  border-radius: 2px;
+  padding: 1px 5px;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.badge-neutral {
+  background-color: #21262d;
+  color: #8b949e;
+  font-weight: 600;
+  border-radius: 2px;
+  padding: 1px 5px;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+/* Custom thin scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0d1117;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #21262d;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #30363d;
+}
