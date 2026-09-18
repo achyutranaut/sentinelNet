@@ -84,7 +84,7 @@ class Tier0HeuristicDetector:
         cost_fp: float = 50.0
     ) -> Dict[str, Any]:
         """Runs evaluation over the benchmark test set and records metrics."""
-        y_true = test_df["label"].to_numpy()
+        y_true = test_df["label"].to_numpy(dtype=int)
 
         start_t = time.perf_counter()
         y_pred = self.predict_dataframe(test_df)
@@ -109,7 +109,7 @@ class Tier0HeuristicDetector:
         for attack_name, group in test_df.groupby("attack_type"):
             if attack_name == "BENIGN":
                 continue
-            grp_true = group["label"].to_numpy()
+            grp_true = group["label"].to_numpy(dtype=int)
             grp_pred = self.predict_dataframe(group)
             attack_recall[attack_name] = float(recall_score(grp_true, grp_pred, zero_division=0))
 
@@ -131,17 +131,11 @@ class Tier0HeuristicDetector:
 
 
 def run_tier0_benchmark():
-    raw_df = pd.read_parquet("data/raw/raw_flows.parquet")
     splits = joblib.load("data/processed/dataset_splits.joblib")
-    
-    # Reconstruct test dataframe with metadata
-    test_features_df = raw_df.iloc[-len(splits.y_test):].copy().reset_index(drop=True)
-    # Ensure test metadata labels match
-    test_features_df["label"] = splits.y_test
-    test_features_df["attack_type"] = splits.test_metadata["attack_type"].to_numpy()
+    test_df = splits.raw_test_df.copy()
 
     detector = Tier0HeuristicDetector()
-    results = detector.evaluate(test_features_df)
+    results = detector.evaluate(test_df)
 
     print("=" * 60)
     print(">>> TIER 0 BASELINE EVALUATION RESULTS")
