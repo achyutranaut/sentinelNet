@@ -21,7 +21,19 @@ COPY tests/ tests/
 # Train initial baseline production model bundle
 RUN PYTHONPATH=. python src/pipeline.py --quick
 
+# Cache pre-built artifacts to protect against empty host volume shadowing
+RUN mkdir -p /app/default_artifacts /app/default_data && \
+    cp -r /app/artifacts/* /app/default_artifacts/ 2>/dev/null || true && \
+    cp -r /app/data/* /app/default_data/ 2>/dev/null || true
+
+# Copy and configure entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 EXPOSE 8000 8501
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # Default launch command runs scoring API
 CMD ["uvicorn", "src.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+

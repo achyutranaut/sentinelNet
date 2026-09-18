@@ -5,6 +5,8 @@ services:
     ports:
       - "8000:8000"
     command: uvicorn src.api.app:app --host 0.0.0.0 --port 8000
+    environment:
+      - SENTINEL_API_KEY=sentinel-dev-secret-key-32b
     volumes:
       - ./artifacts:/app/artifacts
       - ./data:/app/data
@@ -20,8 +22,10 @@ services:
     ports:
       - "8501:8501"
     command: streamlit run src/dashboard/app.py --server.port=8501 --server.address=0.0.0.0
-    volumes:
-      - ./artifacts:/app/artifacts
-      - ./data:/app/data
+    environment:
+      - SENTINEL_API_URL=http://scoring-api:8000
+      - SENTINEL_API_KEY=sentinel-dev-secret-key-32b
     depends_on:
-      - scoring-api
+      scoring-api:
+        condition: service_healthy
+

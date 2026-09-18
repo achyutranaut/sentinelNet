@@ -5,8 +5,10 @@ and buffers streaming flows for rolling statistical drift evaluations.
 """
 
 from collections import deque
+import threading
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
+from fastapi import HTTPException, status
 import numpy as np
 import pandas as pd
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -94,3 +96,86 @@ class StreamingDriftBuffer:
             "num_drifted_features": rep.num_drifted_features,
             "total_features": rep.total_features_evaluated
         }
+
+
+class SlidingWindowRateLimiter:
+    """Thread-safe in-memory sliding window rate limiter.
+
+    Protects model endpoints against adversarial decision boundary reverse-engineering
+    and computationally heavy perturbation DoS vectors.
+    """
+
+    def __init__(self):
+        self._windows: Dict[str, deque] = {}
+        self._lock = threading.Lock()
+
+    def check_rate_limit(
+        self,
+        identifier: str,
+        max_requests: int,
+        window_seconds: float
+    ) -> Tuple[bool, float]:
+        """Checks whether the identifier is within limits.
+
+        Returns (is_allowed, retry_after_seconds).
+        """
+        now = time.time()
+        cutoff = now - window_seconds
+
+        with self._lock:
+            if identifier not in self._windows:
+                self._windows[identifier] = deque()
+
+            timestamps = self._windows[identifier]
+
+            # Evict timestamps outside the sliding window
+            while timestamps and timestamps[0] <= cutoff:
+                timestamps.popleft()
+
+            if len(timestamps) < max_requests:
+                timestamps.append(now)
+                return True, 0.0
+
+            oldest = timestamps[0]
+            retry_after = max(0.1, round(oldest + window_seconds - now, 2))
+            return False, retry_after
+
+    def reset(self) -> None:
+        """Clears all rate limiting windows (useful for test isolation)."""
+        with self._lock:
+            self._windows.clear()
+
+
+global_rate_limiter = SlidingWindowRateLimiter()
+
+
+class RateLimitChecker:
+    """FastAPI dependency for per-endpoint rate limiting."""
+
+    def __init__(self, max_requests: int, window_seconds: float = 60.0, route_name: str = "default"):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self.route_name = route_name
+
+    async def __call__(self, request: Request) -> None:
+        client_ip = request.client.host if request.client else "unknown"
+        # Support X-Forwarded-For if behind a proxy
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            client_ip = forwarded.split(",")[0].strip()
+
+        identifier = f"{client_ip}:{self.route_name}"
+
+        is_allowed, retry_after = global_rate_limiter.check_rate_limit(
+            identifier=identifier,
+            max_requests=self.max_requests,
+            window_seconds=self.window_seconds
+        )
+
+        if not is_allowed:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Rate limit exceeded for {self.route_name} ({self.max_requests} req / {int(self.window_seconds)}s). Throttled to prevent adversarial boundary probing.",
+                headers={"Retry-After": str(int(retry_after) + 1)}
+            )
+

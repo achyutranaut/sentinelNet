@@ -4,22 +4,29 @@ FastAPI microservice delivering sub-millisecond per-flow inference,
 multi-tier ensemble scoring (LightGBM + Autoencoder + Cost Calibration),
 SVG-ready temporal lateral movement topology, adversarial robustness testing,
 resilient WebSocket alert streaming with TreeSHAP explanations, and statistical drift observability.
+Hardened with API key authentication, adversarial DoS rate limiting, CORS, non-blocking async execution,
+and thread-safe lifecycle initialization.
 """
 
 import asyncio
 from collections import deque
 from contextlib import asynccontextmanager
+import logging
 from pathlib import Path
+import threading
 import time
 from typing import Any, Dict, List, Optional
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 import joblib
 import networkx as nx
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel
 
-from src.api.middleware import StreamingDriftBuffer, TelemetryCollector
+from src.api.auth import verify_api_key, verify_ws_api_key
+from src.api.middleware import RateLimitChecker, StreamingDriftBuffer, TelemetryCollector
 from src.api.schemas import (
     AlertStreamItem,
     DriftFeatureStat,
@@ -48,6 +55,13 @@ from src.ops.cost_calibrator import SOCCostCalibrator
 from src.ops.drift_monitor import StatisticalDriftMonitor
 from src.ops.explainability import IncidentExplainabilityEngine
 
+logger = logging.getLogger("sentinelnet.api")
+_init_lock = threading.Lock()
+
+# Per-route rate limiters
+score_rate_limiter = RateLimitChecker(max_requests=60, window_seconds=60.0, route_name="score")
+evasion_rate_limiter = RateLimitChecker(max_requests=5, window_seconds=60.0, route_name="evasion_test")
+
 
 def init_state(app: FastAPI) -> None:
     """Loads all five tiers' artifacts and monitors once into app.state."""
@@ -58,7 +72,7 @@ def init_state(app: FastAPI) -> None:
     try:
         bundle = registry.get_production_bundle()
     except Exception as e:
-        print(f"Warning: Primary production bundle lookup failed: {e}. Falling back to latest.")
+        logger.warning("Primary production bundle lookup failed: %s. Falling back to latest.", e)
         models = registry.list_models()
         if models:
             bundle = registry.load_bundle(models[-1]["model_id"])
@@ -122,16 +136,20 @@ def init_state(app: FastAPI) -> None:
     app.state.alert_manager = alert_manager
     app.state.initialized = True
 
-    print(
-        f"SentinelNet serving layer initialized with model: {bundle.metadata.model_id} "
-        f"(v{bundle.metadata.version}, optimal_threshold={cost_threshold:.4f})"
+    logger.info(
+        "SentinelNet serving layer initialized with model: %s (v%s, optimal_threshold=%.4f)",
+        bundle.metadata.model_id,
+        bundle.metadata.version,
+        cost_threshold
     )
 
 
 def ensure_initialized(app: FastAPI) -> None:
-    """Guarantees app.state has all tier artifacts initialized."""
+    """Guarantees app.state has all tier artifacts initialized with thread-safe double-checked locking."""
     if not getattr(app.state, "initialized", False):
-        init_state(app)
+        with _init_lock:
+            if not getattr(app.state, "initialized", False):
+                init_state(app)
 
 
 @asynccontextmanager
@@ -148,182 +166,70 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-
-# =============================================================================
-# Health & Provenance
-# =============================================================================
-@app.get("/health", response_model=HealthResponse, status_code=status.HTTP_200_OK)
-async def health_check(request: Request) -> HealthResponse:
-    """Checks that all 5 tiers of the SentinelNet pipeline are successfully loaded."""
-    ensure_initialized(request.app)
-    state = request.app.state
-
-    bundle = getattr(state, "bundle", None)
-    tier0 = bundle is not None and getattr(bundle, "preprocessor", None) is not None
-    tier1 = bundle is not None and getattr(bundle, "supervised_model", None) is not None
-    tier2 = bundle is not None and getattr(bundle, "autoencoder_model", None) is not None
-    tier3 = getattr(state, "lateral_tracker", None) is not None
-    tier4 = getattr(state, "adversarial_engine", None) is not None
-    tier5_cost = getattr(state, "cost_calibrator", None) is not None
-    tier5_shap = getattr(state, "explainer", None) is not None
-    tier5_drift = getattr(state, "drift_monitor", None) is not None
-
-    all_tiers_loaded = all([tier0, tier1, tier2, tier3, tier4, tier5_cost, tier5_shap, tier5_drift])
-    status_str = "HEALTHY" if all_tiers_loaded else "UNHEALTHY"
-
-    return HealthResponse(
-        status=status_str,
-        all_tiers_loaded=all_tiers_loaded,
-        model_id=bundle.metadata.model_id if bundle else None,
-        version=bundle.metadata.version if bundle else None,
-        dataset_hash=bundle.metadata.dataset_hash if bundle else None,
-        model_status=bundle.metadata.status if bundle else None,
-        tiers=HealthTierDetails(
-            tier0_preprocessor=tier0,
-            tier1_supervised=tier1,
-            tier2_autoencoder=tier2,
-            tier3_lateral_graph=tier3,
-            tier4_adversarial_engine=tier4,
-            tier5_cost_calibrator=tier5_cost,
-            tier5_shap_explainer=tier5_shap,
-            tier5_drift_monitor=tier5_drift
-        )
-    )
+# Enable CORS for frontend clients (React/Vite on 5173, Next.js on 3000, Streamlit on 8501)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8501",
+        "http://127.0.0.1:8501",
+    ],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
 
 
 # =============================================================================
-# Tier 1 & 2 Scoring + Tier 5 Cost Calibration
+# Helper sync functions for non-blocking execution via asyncio.to_thread
 # =============================================================================
-@app.post("/score", response_model=ScoreResponse, status_code=status.HTTP_200_OK)
-async def score_flow(record: FlowScoreRequest, request: Request) -> ScoreResponse:
-    """Accepts a validated flow record, scores it with Tiers 1 and 2, applies Tier 5 cost-weighted threshold.
-
-    Streams threats to WebSocket subscribers with attached TreeSHAP explanations.
-    """
-    ensure_initialized(request.app)
-    state = request.app.state
-    bundle = state.bundle
-    if bundle is None:
-        raise HTTPException(status_code=503, detail="Production model not initialized.")
-
-    t0 = time.perf_counter()
-    flow_dict = record.model_dump()
-
-    # Preprocessing (Tier 0)
+def _sync_score_inference(bundle: InferenceBundle, flow_dict: Dict[str, Any], cost_threshold: float):
+    """Synchronous CPU-bound pipeline for preprocessing, LightGBM and Autoencoder inference."""
     X = bundle.preprocessor.transform(flow_dict)
-
-    # Tier 1: LightGBM Supervised Classifier Score
     supervised_prob = float(bundle.supervised_model.predict_proba(X)[0])
-
-    # Tier 2: Autoencoder Zero-Day Anomaly Reconstruction Score
     recon_loss = float(bundle.autoencoder_model.compute_reconstruction_error(X)[0])
     ae_threshold = float(bundle.autoencoder_model.threshold if bundle.autoencoder_model.threshold is not None else 1.0)
     autoencoder_pred = int(recon_loss >= ae_threshold)
-
-    # Tier 5: Cost-Weighted Neyman-Pearson Decision Threshold
-    cost_threshold = float(record.supervised_threshold if record.supervised_threshold is not None else state.cost_threshold)
     supervised_pred = int(supervised_prob >= cost_threshold)
+    return X, supervised_prob, recon_loss, ae_threshold, autoencoder_pred, supervised_pred
 
-    # Multi-Tier Ensemble Verdict
-    is_attack = bool(supervised_pred or autoencoder_pred)
-    calibrated_verdict = is_attack
 
-    detection_tier = "BENIGN"
-    if supervised_pred and autoencoder_pred:
-        detection_tier = "TIER_1_AND_TIER_2"
-    elif supervised_pred:
-        detection_tier = "TIER_1_SUPERVISED"
-    elif autoencoder_pred:
-        detection_tier = "TIER_2_ZERO_DAY_ANOMALY"
+def _sync_explain_flow(explainer: IncidentExplainabilityEngine, X: np.ndarray, flow_dict: Dict[str, Any], top_k: int = 5):
+    """Synchronous CPU-bound TreeSHAP explanation calculation."""
+    return explainer.explain_flow(X, raw_flow_dict=flow_dict, top_k=top_k)
 
-    latency_ms = (time.perf_counter() - t0) * 1000.0
 
-    # Telemetry SLA recording
-    state.telemetry.record_inference(latency_ms, detection_tier, is_attack)
-
-    # Ingest feature into rolling drift buffer
-    if state.drift_buffer is not None:
-        state.drift_buffer.add_features(X)
-
-    # Add to rolling temporal graph buffer
-    state.graph_flows.append(flow_dict)
-
-    # Stream new alert via WebSocket if attack
-    if is_attack and state.alert_manager.subscriber_count() > 0:
-        try:
-            summary = state.explainer.explain_flow(X, raw_flow_dict=flow_dict, top_k=5)
-            drivers = [
-                SHAPFeatureDriver(
-                    feature=d.feature_name,
-                    value=round(float(d.feature_value), 2),
-                    shap_attribution=round(float(d.shap_value), 4),
-                    direction=d.impact_direction
-                )
-                for d in summary.top_drivers
-            ]
-            shap_payload = SHAPExplanationPayload(
-                predicted_probability=round(summary.predicted_probability, 4),
-                base_value=round(summary.base_value, 4),
-                analyst_summary=summary.analyst_summary,
-                top_drivers=drivers
-            )
-        except Exception:
-            shap_payload = SHAPExplanationPayload(
-                predicted_probability=round(supervised_prob, 4),
-                base_value=0.5,
-                analyst_summary=f"Incident flagged by {detection_tier}.",
-                top_drivers=[]
-            )
-
-        alert = AlertStreamItem(
-            alert_id=f"ALT-{int(time.time() * 1000)}-{record.dst_port}",
-            timestamp=record.timestamp,
-            src_ip=record.src_ip,
-            dst_ip=record.dst_ip,
-            dst_port=record.dst_port,
-            attack_type=record.attack_type or "SUSPICIOUS_FLOW",
-            detection_tier=detection_tier,
-            supervised_probability=round(supervised_prob, 4),
-            reconstruction_loss=round(recon_loss, 4),
-            is_attack=is_attack,
-            explanation=shap_payload
-        )
-        await state.alert_manager.broadcast_alert(alert)
-
-    return ScoreResponse(
-        is_attack=is_attack,
-        calibrated_verdict=calibrated_verdict,
-        detection_tier=detection_tier,
-        supervised_probability=round(supervised_prob, 4),
-        supervised_score=round(supervised_prob, 4),
-        supervised_prediction=supervised_pred,
-        reconstruction_loss=round(recon_loss, 4),
-        reconstruction_threshold=round(ae_threshold, 4),
-        autoencoder_prediction=autoencoder_pred,
-        cost_calibrated_threshold=round(cost_threshold, 4),
-        model_version=bundle.metadata.version,
-        latency_ms=round(latency_ms, 3)
+def _sync_evasion_test(adversarial_engine, autoencoder_model, supervised_model, X_batch, budget, cost_threshold):
+    """Synchronous CPU-bound FGSM perturbation and recall benchmark."""
+    X_adv = adversarial_engine.generate_fgsm_perturbation(
+        autoencoder_model,
+        X_batch,
+        epsilon=budget
     )
+    sup_probs = supervised_model.predict_proba(X_adv)
+    sup_preds = (sup_probs >= cost_threshold).astype(int)
+    sup_recall = float(np.mean(sup_preds))
+
+    ae_thresh = autoencoder_model.threshold if autoencoder_model.threshold is not None else 1.0
+    recon_losses = autoencoder_model.compute_reconstruction_error(X_adv)
+    ae_preds = (recon_losses >= ae_thresh).astype(int)
+    ae_recall = float(np.mean(ae_preds))
+
+    combined_preds = (sup_preds | ae_preds).astype(int)
+    combined_recall = float(np.mean(combined_preds))
+    return combined_recall, sup_recall, ae_recall
 
 
-# =============================================================================
-# Tier 3 Temporal Host Communication Graph State (Direct SVG Consumable)
-# =============================================================================
-@app.get("/graph/state", response_model=GraphStateResponse, status_code=status.HTTP_200_OK)
-async def get_graph_state(request: Request) -> GraphStateResponse:
-    """Returns current host communication graph with precomputed SVG canvas coordinates and metrics."""
-    ensure_initialized(request.app)
-    state = request.app.state
-    lateral_tracker: TemporalLateralTracker = state.lateral_tracker
-
-    flows = list(state.graph_flows)
-    if not flows:
-        flows = state.generator.generate_baseline_flows(40).to_dict(orient="records")
-
+def _sync_generate_graph_state(lateral_tracker: TemporalLateralTracker, flows: List[Dict[str, Any]]) -> GraphStateResponse:
+    """Synchronous CPU-bound NetworkX graph computation and SVG layout generation."""
     df_window = pd.DataFrame(flows)
     report = lateral_tracker.analyze_window(df_window)
 
-    # Build NetworkX graph
     G = nx.DiGraph()
     for _, row in df_window.iterrows():
         src = str(row["src_ip"])
@@ -334,10 +240,8 @@ async def get_graph_state(request: Request) -> GraphStateResponse:
     flagged_pivots_map = {p.host_ip: p for p in report.flagged_pivots}
     flagged_ips = set(flagged_pivots_map.keys())
 
-    # Spring layout with deterministic seed
     pos = nx.spring_layout(G, seed=42) if len(G) > 0 else {}
 
-    # Coordinate normalization to SVG viewBox 0 0 800 600 (margin 60px)
     if pos:
         xs = [p[0] for p in pos.values()]
         ys = [p[1] for p in pos.values()]
@@ -376,7 +280,6 @@ async def get_graph_state(request: Request) -> GraphStateResponse:
 
         zscore = (out_deg - mean_deg) / std_deg
 
-        # Edge novelty
         neighbors = set(G.successors(node_id))
         novel = sum(1 for dst in neighbors if (node_id, dst) not in lateral_tracker.baseline_edges)
         novelty = (novel / max(1, len(neighbors))) if neighbors else 0.0
@@ -466,11 +369,202 @@ async def get_graph_state(request: Request) -> GraphStateResponse:
 
 
 # =============================================================================
-# Tier 4 Adversarial Perturbation Testing Lab
+# Health & Provenance (Publicly accessible for container orchestrators)
 # =============================================================================
-@app.post("/evasion/test", response_model=EvasionTestResponse, status_code=status.HTTP_200_OK)
+@app.get("/health", response_model=HealthResponse, status_code=status.HTTP_200_OK)
+async def health_check(request: Request) -> HealthResponse:
+    """Checks that all 5 tiers of the SentinelNet pipeline are successfully loaded."""
+    ensure_initialized(request.app)
+    state = request.app.state
+
+    bundle = getattr(state, "bundle", None)
+    tier0 = bundle is not None and getattr(bundle, "preprocessor", None) is not None
+    tier1 = bundle is not None and getattr(bundle, "supervised_model", None) is not None
+    tier2 = bundle is not None and getattr(bundle, "autoencoder_model", None) is not None
+    tier3 = getattr(state, "lateral_tracker", None) is not None
+    tier4 = getattr(state, "adversarial_engine", None) is not None
+    tier5_cost = getattr(state, "cost_calibrator", None) is not None
+    tier5_shap = getattr(state, "explainer", None) is not None
+    tier5_drift = getattr(state, "drift_monitor", None) is not None
+
+    all_tiers_loaded = all([tier0, tier1, tier2, tier3, tier4, tier5_cost, tier5_shap, tier5_drift])
+    status_str = "HEALTHY" if all_tiers_loaded else "UNHEALTHY"
+
+    return HealthResponse(
+        status=status_str,
+        all_tiers_loaded=all_tiers_loaded,
+        model_id=bundle.metadata.model_id if bundle else None,
+        version=bundle.metadata.version if bundle else None,
+        dataset_hash=bundle.metadata.dataset_hash if bundle else None,
+        model_status=bundle.metadata.status if bundle else None,
+        tiers=HealthTierDetails(
+            tier0_preprocessor=tier0,
+            tier1_supervised=tier1,
+            tier2_autoencoder=tier2,
+            tier3_lateral_graph=tier3,
+            tier4_adversarial_engine=tier4,
+            tier5_cost_calibrator=tier5_cost,
+            tier5_shap_explainer=tier5_shap,
+            tier5_drift_monitor=tier5_drift
+        )
+    )
+
+
+# =============================================================================
+# Tier 1 & 2 Scoring + Tier 5 Cost Calibration (Protected by API Key + Rate Limit)
+# =============================================================================
+@app.post(
+    "/score",
+    response_model=ScoreResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(verify_api_key), Depends(score_rate_limiter)]
+)
+async def score_flow(record: FlowScoreRequest, request: Request) -> ScoreResponse:
+    """Accepts a validated flow record, scores it with Tiers 1 and 2, applies Tier 5 cost-weighted threshold.
+
+    Streams threats to WebSocket subscribers with attached TreeSHAP explanations.
+    Uses non-blocking execution via asyncio.to_thread to maintain sub-millisecond event-loop responsiveness.
+    """
+    ensure_initialized(request.app)
+    state = request.app.state
+    bundle = state.bundle
+    if bundle is None:
+        raise HTTPException(status_code=503, detail="Production model not initialized.")
+
+    t0 = time.perf_counter()
+    flow_dict = record.model_dump()
+    cost_thresh = float(record.supervised_threshold if record.supervised_threshold is not None else state.cost_threshold)
+
+    # Execute ML inference in background thread to avoid event loop stalling
+    X, supervised_prob, recon_loss, ae_threshold, autoencoder_pred, supervised_pred = await asyncio.to_thread(
+        _sync_score_inference,
+        bundle,
+        flow_dict,
+        cost_thresh
+    )
+
+    # Multi-Tier Ensemble Verdict
+    is_attack = bool(supervised_pred or autoencoder_pred)
+    calibrated_verdict = is_attack
+
+    detection_tier = "BENIGN"
+    if supervised_pred and autoencoder_pred:
+        detection_tier = "TIER_1_AND_TIER_2"
+    elif supervised_pred:
+        detection_tier = "TIER_1_SUPERVISED"
+    elif autoencoder_pred:
+        detection_tier = "TIER_2_ZERO_DAY_ANOMALY"
+
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+
+    # Telemetry SLA recording
+    state.telemetry.record_inference(latency_ms, detection_tier, is_attack)
+
+    # Ingest feature into rolling drift buffer
+    if state.drift_buffer is not None:
+        state.drift_buffer.add_features(X)
+
+    # Add to rolling temporal graph buffer
+    state.graph_flows.append(flow_dict)
+
+    # Stream new alert via WebSocket if attack
+    if is_attack and state.alert_manager.subscriber_count() > 0:
+        try:
+            summary = await asyncio.to_thread(_sync_explain_flow, state.explainer, X, flow_dict, 5)
+            drivers = [
+                SHAPFeatureDriver(
+                    feature=d.feature_name,
+                    value=round(float(d.feature_value), 2),
+                    shap_attribution=round(float(d.shap_value), 4),
+                    direction=d.impact_direction
+                )
+                for d in summary.top_drivers
+            ]
+            shap_payload = SHAPExplanationPayload(
+                predicted_probability=round(summary.predicted_probability, 4),
+                base_value=round(summary.base_value, 4),
+                analyst_summary=summary.analyst_summary,
+                top_drivers=drivers
+            )
+        except Exception as e:
+            logger.exception("TreeSHAP explanation generation failed for alert: %s", e)
+            shap_payload = SHAPExplanationPayload(
+                predicted_probability=round(supervised_prob, 4),
+                base_value=0.5,
+                analyst_summary=f"Incident flagged by {detection_tier}.",
+                top_drivers=[]
+            )
+
+        alert = AlertStreamItem(
+            alert_id=f"ALT-{int(time.time() * 1000)}-{record.dst_port}",
+            timestamp=record.timestamp,
+            src_ip=record.src_ip,
+            dst_ip=record.dst_ip,
+            dst_port=record.dst_port,
+            attack_type=record.attack_type or "SUSPICIOUS_FLOW",
+            detection_tier=detection_tier,
+            supervised_probability=round(supervised_prob, 4),
+            reconstruction_loss=round(recon_loss, 4),
+            is_attack=is_attack,
+            explanation=shap_payload
+        )
+        await state.alert_manager.broadcast_alert(alert)
+
+    return ScoreResponse(
+        is_attack=is_attack,
+        calibrated_verdict=calibrated_verdict,
+        detection_tier=detection_tier,
+        supervised_probability=round(supervised_prob, 4),
+        supervised_score=round(supervised_prob, 4),
+        supervised_prediction=supervised_pred,
+        reconstruction_loss=round(recon_loss, 4),
+        reconstruction_threshold=round(ae_threshold, 4),
+        autoencoder_prediction=autoencoder_pred,
+        cost_calibrated_threshold=round(cost_thresh, 4),
+        model_version=bundle.metadata.version,
+        latency_ms=round(latency_ms, 3)
+    )
+
+
+# =============================================================================
+# Tier 3 Temporal Host Communication Graph State (Direct SVG Consumable)
+# =============================================================================
+@app.get(
+    "/graph/state",
+    response_model=GraphStateResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(verify_api_key)]
+)
+async def get_graph_state(request: Request) -> GraphStateResponse:
+    """Returns current host communication graph with precomputed SVG canvas coordinates and metrics.
+
+    Offloads NetworkX topology generation to a thread pool to avoid blocking the event loop.
+    """
+    ensure_initialized(request.app)
+    state = request.app.state
+    lateral_tracker: TemporalLateralTracker = state.lateral_tracker
+
+    flows = list(state.graph_flows)
+    if not flows:
+        flows = state.generator.generate_baseline_flows(40).to_dict(orient="records")
+
+    return await asyncio.to_thread(_sync_generate_graph_state, lateral_tracker, flows)
+
+
+# =============================================================================
+# Tier 4 Adversarial Perturbation Testing Lab (Protected by API Key + Rate Limit)
+# =============================================================================
+@app.post(
+    "/evasion/test",
+    response_model=EvasionTestResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(verify_api_key), Depends(evasion_rate_limiter)]
+)
 async def test_adversarial_evasion(req: EvasionTestRequest, request: Request) -> EvasionTestResponse:
-    """Evaluates detection recall degradation against FGSM adversarial perturbation budget."""
+    """Evaluates detection recall degradation against FGSM adversarial perturbation budget.
+
+    Strictly rate limited to 5 requests/minute to prevent DoS via heavy PyTorch gradient computation.
+    """
     ensure_initialized(request.app)
     state = request.app.state
     bundle = state.bundle
@@ -484,27 +578,16 @@ async def test_adversarial_evasion(req: EvasionTestRequest, request: Request) ->
     else:
         X_batch = X_attacks
 
-    # Run Tier 4 Perturbation Engine
-    X_adv = state.adversarial_engine.generate_fgsm_perturbation(
+    # Offload heavy FGSM and evaluation to worker thread
+    combined_recall, sup_recall, ae_recall = await asyncio.to_thread(
+        _sync_evasion_test,
+        state.adversarial_engine,
         bundle.autoencoder_model,
+        bundle.supervised_model,
         X_batch,
-        epsilon=budget
+        budget,
+        state.cost_threshold
     )
-
-    # Supervised recall under calibrated threshold
-    sup_probs = bundle.supervised_model.predict_proba(X_adv)
-    sup_preds = (sup_probs >= state.cost_threshold).astype(int)
-    sup_recall = float(np.mean(sup_preds))
-
-    # Autoencoder recall
-    ae_thresh = bundle.autoencoder_model.threshold if bundle.autoencoder_model.threshold is not None else 1.0
-    recon_losses = bundle.autoencoder_model.compute_reconstruction_error(X_adv)
-    ae_preds = (recon_losses >= ae_thresh).astype(int)
-    ae_recall = float(np.mean(ae_preds))
-
-    # Combined ensemble recall
-    combined_preds = (sup_preds | ae_preds).astype(int)
-    combined_recall = float(np.mean(combined_preds))
 
     return EvasionTestResponse(
         perturbation_budget=budget,
@@ -517,11 +600,18 @@ async def test_adversarial_evasion(req: EvasionTestRequest, request: Request) ->
 
 
 # =============================================================================
-# Tier 5 WebSocket Live Alert & TreeSHAP Stream
+# Tier 5 WebSocket Live Alert & TreeSHAP Stream (Secured with API Key)
 # =============================================================================
 @app.websocket("/alerts/stream")
-async def alerts_stream(websocket: WebSocket):
-    """Streams live alerts with TreeSHAP explanations. Handles client disconnects gracefully."""
+async def alerts_stream(websocket: WebSocket, api_key: Optional[str] = None):
+    """Streams live alerts with TreeSHAP explanations. Handles client disconnects gracefully.
+
+    Authenticated via 'api_key' query parameter or 'X-API-Key' / 'Sec-WebSocket-Protocol' header.
+    """
+    is_authenticated = await verify_ws_api_key(websocket, api_key=api_key)
+    if not is_authenticated:
+        return
+
     ensure_initialized(websocket.app)
     alert_mgr: AlertStreamManager = websocket.app.state.alert_manager
     await alert_mgr.connect(websocket)
@@ -545,7 +635,12 @@ async def alerts_stream(websocket: WebSocket):
 # =============================================================================
 # Tier 5 Statistical Drift Status
 # =============================================================================
-@app.get("/drift/status", response_model=DriftStatusResponse, status_code=status.HTTP_200_OK)
+@app.get(
+    "/drift/status",
+    response_model=DriftStatusResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(verify_api_key)]
+)
 async def get_drift_status(request: Request) -> DriftStatusResponse:
     """Returns KS and PSI drift statistics and boolean retraining recommendation flag."""
     ensure_initialized(request.app)
@@ -581,7 +676,7 @@ async def get_drift_status(request: Request) -> DriftStatusResponse:
 
 
 # =============================================================================
-# Backward Compatibility Endpoints
+# Backward Compatibility Endpoints (Marked Deprecated)
 # =============================================================================
 class FlowPredictionResponse(BaseModel):
     is_attack: bool
@@ -600,23 +695,42 @@ class BatchPredictionRequest(BaseModel):
     supervised_threshold: Optional[float] = 0.5
 
 
-@app.get("/metrics", status_code=status.HTTP_200_OK)
-async def get_telemetry_metrics(request: Request) -> Dict[str, Any]:
-    """Exposes real-time serving SLAs, latency percentiles, and detection statistics."""
+@app.get("/metrics", status_code=status.HTTP_200_OK, deprecated=True)
+async def get_telemetry_metrics(request: Request, response: Response) -> Dict[str, Any]:
+    """Exposes real-time serving SLAs, latency percentiles, and detection statistics.
+
+    Deprecated: Migrate to standard Prometheus /health telemetry.
+    """
+    response.headers["Deprecation"] = "true"
     ensure_initialized(request.app)
     return request.app.state.telemetry.get_metrics()
 
 
-@app.get("/drift", status_code=status.HTTP_200_OK)
-async def get_legacy_drift(request: Request) -> Dict[str, Any]:
-    """Legacy drift endpoint."""
+@app.get("/drift", status_code=status.HTTP_200_OK, deprecated=True, dependencies=[Depends(verify_api_key)])
+async def get_legacy_drift(request: Request, response: Response) -> Dict[str, Any]:
+    """Legacy drift endpoint. Deprecated: Use GET /drift/status."""
+    response.headers["Deprecation"] = "true"
+    response.headers["Link"] = '</drift/status>; rel="successor-version"'
     ensure_initialized(request.app)
     return request.app.state.drift_buffer.get_latest_report() or {"status": "BUFFERING"}
 
 
-@app.post("/predict", response_model=FlowPredictionResponse, status_code=status.HTTP_200_OK)
-async def predict_flow(record: NetFlowRecord, request: Request, supervised_threshold: float = 0.5) -> FlowPredictionResponse:
-    """Legacy single flow scoring endpoint."""
+@app.post(
+    "/predict",
+    response_model=FlowPredictionResponse,
+    status_code=status.HTTP_200_OK,
+    deprecated=True,
+    dependencies=[Depends(verify_api_key)]
+)
+async def predict_flow(
+    record: NetFlowRecord,
+    request: Request,
+    response: Response,
+    supervised_threshold: float = 0.5
+) -> FlowPredictionResponse:
+    """Legacy single flow scoring endpoint. Deprecated: Use POST /score."""
+    response.headers["Deprecation"] = "true"
+    response.headers["Link"] = '</score>; rel="successor-version"'
     ensure_initialized(request.app)
     state = request.app.state
     if state.bundle is None:
@@ -624,21 +738,35 @@ async def predict_flow(record: NetFlowRecord, request: Request, supervised_thres
 
     t0 = time.perf_counter()
     flow_dict = record.model_dump()
-    score = state.bundle.score_single_flow(flow_dict, supervised_threshold=supervised_threshold)
+    score = await asyncio.to_thread(
+        state.bundle.score_single_flow,
+        flow_dict,
+        supervised_threshold=supervised_threshold
+    )
     latency_ms = (time.perf_counter() - t0) * 1000.0
 
     state.telemetry.record_inference(latency_ms, score["detection_tier"], score["is_attack"])
     if state.drift_buffer is not None:
-        X = state.bundle.preprocessor.transform(flow_dict)
+        X = await asyncio.to_thread(state.bundle.preprocessor.transform, flow_dict)
         state.drift_buffer.add_features(X)
 
     score["inference_latency_ms"] = round(latency_ms, 3)
     return FlowPredictionResponse(**score)
 
 
-@app.post("/predict/batch", status_code=status.HTTP_200_OK)
-async def predict_batch(req: BatchPredictionRequest, request: Request) -> Dict[str, Any]:
-    """Legacy batch prediction endpoint."""
+@app.post(
+    "/predict/batch",
+    status_code=status.HTTP_200_OK,
+    deprecated=True,
+    dependencies=[Depends(verify_api_key)]
+)
+async def predict_batch(
+    req: BatchPredictionRequest,
+    request: Request,
+    response: Response
+) -> Dict[str, Any]:
+    """Legacy batch prediction endpoint. Deprecated: Use streaming POST /score."""
+    response.headers["Deprecation"] = "true"
     ensure_initialized(request.app)
     state = request.app.state
     if state.bundle is None:
@@ -647,7 +775,7 @@ async def predict_batch(req: BatchPredictionRequest, request: Request) -> Dict[s
     t0 = time.perf_counter()
     df = pd.DataFrame(req.flows)
     thresh = req.supervised_threshold if req.supervised_threshold is not None else 0.5
-    df_scored = state.bundle.score_batch(df, supervised_threshold=thresh)
+    df_scored = await asyncio.to_thread(state.bundle.score_batch, df, supervised_threshold=thresh)
     total_time_ms = (time.perf_counter() - t0) * 1000.0
 
     return {
@@ -659,17 +787,28 @@ async def predict_batch(req: BatchPredictionRequest, request: Request) -> Dict[s
     }
 
 
-@app.post("/explain", status_code=status.HTTP_200_OK)
-async def explain_flow(record: NetFlowRecord, request: Request, top_k: int = 5) -> Dict[str, Any]:
-    """Legacy TreeSHAP incident triage endpoint."""
+@app.post(
+    "/explain",
+    status_code=status.HTTP_200_OK,
+    deprecated=True,
+    dependencies=[Depends(verify_api_key)]
+)
+async def explain_flow(
+    record: NetFlowRecord,
+    request: Request,
+    response: Response,
+    top_k: int = 5
+) -> Dict[str, Any]:
+    """Legacy TreeSHAP incident triage endpoint. Deprecated: Explanations are bundled in POST /score and WebSocket alerts."""
+    response.headers["Deprecation"] = "true"
     ensure_initialized(request.app)
     state = request.app.state
     if state.bundle is None or state.explainer is None:
         raise HTTPException(status_code=503, detail="Explainability engine not initialized.")
 
     flow_dict = record.model_dump()
-    X = state.bundle.preprocessor.transform(flow_dict)
-    summary = state.explainer.explain_flow(X, raw_flow_dict=flow_dict, top_k=top_k)
+    X = await asyncio.to_thread(state.bundle.preprocessor.transform, flow_dict)
+    summary = await asyncio.to_thread(state.explainer.explain_flow, X, raw_flow_dict=flow_dict, top_k=top_k)
 
     return {
         "predicted_probability": summary.predicted_probability,
@@ -686,15 +825,26 @@ async def explain_flow(record: NetFlowRecord, request: Request, top_k: int = 5) 
     }
 
 
-@app.post("/graph/analyze", status_code=status.HTTP_200_OK)
-async def analyze_lateral_movement(flows: List[Dict[str, Any]], request: Request) -> Dict[str, Any]:
-    """Legacy graph analyze endpoint."""
+@app.post(
+    "/graph/analyze",
+    status_code=status.HTTP_200_OK,
+    deprecated=True,
+    dependencies=[Depends(verify_api_key)]
+)
+async def analyze_lateral_movement(
+    flows: List[Dict[str, Any]],
+    request: Request,
+    response: Response
+) -> Dict[str, Any]:
+    """Legacy graph analyze endpoint. Deprecated: Use GET /graph/state."""
+    response.headers["Deprecation"] = "true"
+    response.headers["Link"] = '</graph/state>; rel="successor-version"'
     ensure_initialized(request.app)
     if not flows:
         return {"flagged_pivots": []}
 
     df_window = pd.DataFrame(flows)
-    report = request.app.state.lateral_tracker.analyze_window(df_window)
+    report = await asyncio.to_thread(request.app.state.lateral_tracker.analyze_window, df_window)
 
     return {
         "num_nodes": report.num_nodes,
