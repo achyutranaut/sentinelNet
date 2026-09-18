@@ -20,17 +20,23 @@ ENV/
 # Jupyter Notebook
 .ipynb_checkpoints/
 
-# ML / experiment outputs
-models/*.pt
-models/*.pth
-models/*.h5
-models/*.keras
-models/*.joblib
-models/*.pkl
+# ML / experiment outputs & trained bundles
+models/
+artifacts/models/
+artifacts/*.joblib
+artifacts/*.bundle
+*.joblib
+*.bundle
+*.parquet
 
 # Datasets
 data/raw/
 data/processed/
+data/*.joblib
+data/*.parquet
+
+# Accidental dashboard artifacts
+src/dashboard/artifacts/
 
 # Logs
 *.log
@@ -53,6 +59,9 @@ htmlcov/
 build/
 dist/
 *.egg-info/
+frontend/node_modules/
+frontend/dist/
+
 
 # OS/editor temp files
 *.swp
